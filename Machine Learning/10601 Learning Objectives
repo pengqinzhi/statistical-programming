@@ -1,0 +1,18 @@
+a. Implement and analyze existing learning algorithms, including well-studied methods
+for classification, regression, structured prediction, clustering, and representation
+learning
+b. Integrate multiple facets of practical machine learning in a single system: data
+preprocessing, learning, regularization and model selection
+c. Describe the the formal properties of models and algorithms for learning and explain
+the practical implications of those results
+d. Compare and contrast different paradigms for learning (supervised, unsupervised,
+etc.)
+e. Design experiments to evaluate and compare different machine learning techniques
+on real-world problems
+f. Employ probability, statistics, calculus, linear algebra, and optimization in order to
+develop new predictive models or learning methods
+g. Given a description of a ML technique, analyze it to identify (1) the expressive power
+of the formalism; (2) the inductive bias implicit in the algorithm; (3) the size and
+complexity of the search space; (4) the computational properties of the algorithm: (5)
+any guarantees (or lack thereof) regarding termination, convergence, correctness,
+accuracy or generalization power.
