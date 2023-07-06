@@ -1,0 +1,182 @@
+---
+title: "Lab_08R"
+author: "36-600"
+date: "Fall 2022"
+output: 
+  html_document:
+    toc: no
+    toc_float: no
+    theme: spacelab
+---
+
+## Data
+
+We'll begin by importing data on political movements:
+```{r warning = FALSE}
+# load packages
+suppressMessages(library(ggplot2))
+suppressMessages(library(GGally))
+suppressMessages(library(tidyverse))
+```
+
+```{r}
+file.path <- "http://www.stat.cmu.edu/~pfreeman/movement.Rdata"
+load(url(file.path))
+f <- function(variable,level0="NO",level1="YES") {
+  n <- length(variable)
+  new.variable <- rep(level0,n)
+  w <- which(variable==1)
+  new.variable[w] <- level1
+  return(factor(new.variable))
+}
+predictors$nonviol <- f(predictors$nonviol)
+predictors$sanctions <- f(predictors$sanctions)
+predictors$aid <- f(predictors$aid)
+predictors$support <- f(predictors$support)
+predictors$viol.repress <- f(predictors$viol.repress)
+predictors$defect <- f(predictors$defect)
+levels(response) <- c("FAILURE","SUCCESS")
+rm(file.path,id.half,id,predictors.half)
+```
+The data, as processed, contains information on 218 political movements. The predictor variables are largely categorical: `nonviol`, for instance, is `YES` if the movement was non-violent, etc. In particular, `aid` indicates if the government being targeted received foreign aid to deal with the movement, and `defect` indicates whether substantial portions of the military and police sided with the movement. `democracy` ranges from -10 for authoritarian to 10 for fully democratic. 
+
+# Questions
+
+## Question 1
+
+Summarize the predictor variables via `summary()`. Which variable looks like it might benefit from a transform to mitigate right-skewness? Create a histogram for that variable, then make the transformation (by, e.g., doing `predictors$x <- sqrt(predictors$x)`, where `x` should be replaced with the variable name, and yes, we mean `sqrt()` and not `log()`) and create a histogram of the transformed variable.
+```{r}
+# summary of the predictor variables
+summary(predictors)
+```
+
+```{r}
+# histogram of the right-skewed variable
+ggplot(data = predictors, mapping = aes(x = duration)) +
+  geom_histogram(color = "blue", fill = "yellow", bins = 30)
+
+# histogram of the transformed variable
+predictors$duration <- sqrt(predictors$duration)
+
+ggplot(data = predictors, mapping = aes(x = duration)) +
+  geom_histogram(color = "blue", fill = "yellow", bins = 30)
+```
+
+## Question 2
+
+Split the data into training and test sets. Remember to set the seed!
+```{r}
+# split the data
+set.seed(1)
+s <- sample(nrow(predictors), round(0.7*nrow(predictors)))
+pred.train <- predictors[s,]
+pred.test <- predictors[-s,]
+resp.train <- response[s]
+resp.test <- response[-s]
+```
+
+## Question 3
+
+Carry out a logistic regression analysis, and display both the misclassification rate and a table of predictions versus test-set responses (i.e., display the confusion matrix). (Beyond the notes, you might want to look at the code on pages 156-158 of ISLR.) What is your misclassification rate? (Save the output of your call to `table()` as `tab` so that we can use it later.)
+```{r}
+out.log = glm(resp.train ~ ., data = pred.train, family = binomial)
+# generate test-set predict
+resp.prob = predict(out.log,newdata=pred.test, type="response")   
+resp.pred = ifelse(resp.prob>0.5,"SUCCESS","FAILURE")        
+
+# create a confusion matrix 
+tab <- table(resp.pred, resp.test)
+tab
+
+# misclassification rate
+misrate.test <- 1-sum(diag(tab))/sum(tab)
+misrate.test
+```
+```
+The misclassification rate is 0.28.
+```
+
+## Question 4
+
+What are the class proportions for the (test-set!) response variable? Use these numbers to determine the "null MCR," i.e., the misclassification rate if we simply guess that all data belong to the majority class. Recall that summing the output of logical operations (e.g., `sum(resp.test=="NO")`) is a concise way to count the number of yeses and nos. How does this null rate compare to that found in logistic regression?
+```{r}
+# SUCCESS class proportion
+mean(resp.test == "SUCCESS")
+# FAILURE class proportion
+mean(resp.test == "FAILURE") 
+```
+```
+The SUCCESS class proportion is 0.38, and the FAILURE class proportion is 0.62, i.e. if we simply guess that all data belong to the majority class, the misclassification rate will be 0.38, which is larger than the one found in logistic regression.
+```
+
+## Question 5
+
+Compute the sensitivity and specificity of logistic regression using definitions on [this web page](https://en.wikipedia.org/wiki/Confusion_matrix). There can be some ambiguity regarding tables: assume that predicting success for a movement that was successful is a "true positive," while predicting failure for a successful movement is a "false negative," etc.
+
+Don't hard-code numbers! If you saved your confusion matrix above to the variable `tab`, then, e.g.,
+```
+TP <- tab[2,2]
+FP <- tab[2,1]
+```
+etc. Map your table to `TP`, `FP`, `TN`, and `FN`, and use these to compute sensitivity and specificity, and then define each in words. In a perfect world, the sum of sensitivity and specificity would be 2.
+```{r}
+
+TP <- tab[2,2]
+FP <- tab[2,1]
+TN <- tab[1,1]
+FN <- tab[1,2]
+# Reference: https://en.wikipedia.org/wiki/Sensitivity_and_specificity
+# Sensitivity refers to the probability of a positive test, conditioned on truly being positive.
+# Specificity refers to the probability of a negative test, conditioned on truly being negative.
+
+sensitivity <- TP / (TP + FN)
+sensitivity
+specificity <- TN / (TN + FP)
+specificity
+```
+
+## Question 6
+
+A social scientist might be more interested to know what proportion of movements that are predicted to be successful actually are successful. Compute this quantity and determine from the confusion matrix wikipedia page what this quantity is called.
+```{r}
+ppv <- TP / (TP + FP)
+ppv
+```
+```
+The  positive predictive value(PPV) is 0.64, which refers to the proportion of movements that are predicted to be successful actually are successful.
+```
+
+## Question 7
+
+Let's go back to the output from the logistic regression fit to the training data. Pass that output to the `summary()` function here. Look at the output...but before you interpret it, let's review what the output for a categorical predictor variable means. Take `aid`, for instance. The reference level is `NO`, meaning the movement was violent...and for that reference level, the coefficient is implicitly zero (and not explicitly shown in the output). For `YES`, the coefficient is (for me, for my data split) -0.148. (Your coefficient may be and probably will be slightly different.) You can think of what this means in terms of relative odds: does foreign aid to the government "under attack" increase the probability of success, or decrease it? If we compute
+$$
+e^{-0.148} = 0.862 \,,
+$$
+we see that, all else being equal, having foreign aid reduces the odds of a movement's success by about 14%, i.e., aid helps governments repress movements, on average. This all being said: identify the variable that is most informative about predicting *successful* movements, and the variable that is most informative about predicting *failed* movements. (Don't include the intercept term here!)
+```{r}
+# summary
+summary(out.log)
+# Odds ratios
+exp(out.log$coefficients)
+# Reference: https://rpubs.com/juanhklopper/logistic_regression#:~:text=Degrees%20of%20freedom%20is%20calculated,the%20number%20of%20independent%20variables).
+```
+```
+By seeing the odds changes based on each coefficient, we can know that non-violent, more democracy, more support, and defect helps the success of a movement. On the other hand, sanctions, aid, and repress violence facilitate the failness of a movement. And the duration appears not to be informative about predicting movements.
+To be specific, the odd change of aidYES is about 0.87, which means all else being equal, having foreign aid reduces the odds of a movement's success by about 13%.
+```
+
+## Question 8
+
+Is the logistic regression model *significant*, in a statistical sense? Is at least one of the coefficients in the model truly non-zero? Go back to the summary and see the lines indicating the `Null deviance` and the `Residual deviance`. If you named your output from `glm()` as `log.out`, then you can get the null deviance from `log.out$null.deviance` and the residual deviance from `log.out$deviance`.   Why would you want to do this? Well, if you took the absolute value of the difference in deviances (call this `dev.diff`) and the difference in degrees of freedom (`df.diff`), you can do a hypothesis test: for a useful model, `dev.diff` should *not* be chi-square distributed for `df.diff` degrees of freedom. In other words, if the $p$-value `1 - pchisq(dev.diff,df.diff)` is less than 0.05, at least one of the coefficients is truly non-zero. (This is analogous to doing the $F$-test in a linear regression models; there, the null hypothesis is that all the slopes are zero.) Compute the $p$-value here. Do you reject the null hypothesis that all the coefficients are truly zero?
+```{r}
+# Reference: https://stats.stackexchange.com/questions/108995/interpreting-residual-and-null-deviance-in-glm-r
+# https://quantifyinghealth.com/deviance-in-logistic-regression/
+
+dev.diff <- abs(out.log$null.deviance - out.log$deviance)
+df.diff <- 152 - 144   
+# p-value
+1 - pchisq(dev.diff, df.diff)
+```
+```
+The p-value of the model is 5.428535e-10 that is less than 0.05, so we reject the null hypothesis that all the coefficients are truly zero. That means at least one of the coefficients is truly non-zero, and the logistic regression model is statistically significant.
+```

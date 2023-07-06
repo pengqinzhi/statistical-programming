@@ -1,0 +1,104 @@
+---
+title: "Lab_05R"
+author: "36-600"
+date: "Fall 2022"
+output: 
+  html_document:
+    toc: no
+    toc_float: no
+    theme: spacelab
+---
+
+This lab will be a relatively short one, given that your EDA Project report is due at the same time this lab is due (next Tuesday at 8:35 AM).
+
+To answer the questions below, it will again help you to refer to Sections 10.3 and 10.5 of ISLR; it might also help you to refer to your previous lab work (and, as always, to Google). 
+
+## Question 1
+
+Like we did last time, let's create a fake dataset.
+```{r}
+set.seed(505)
+(df <- data.frame(x=runif(3),y=runif(3),z=runif(3)))
+```
+Compute and show the pairwise distance matrix for the *scaled* data. (This is what you would pass into `hclust()`, so there is a reason for doing this.) You should see a lower-triangular matrix as output, with three values between 1 and 4.) Note the smallest value.
+```{r}
+dist(scale(df))
+```
+
+## Question 2
+
+Now run hierarchical clustering on `df` with average linkage, and plot the dendrogram. What you *should* see is that the height of the first merge is (visually, roughly) is the same as that smallest distance value you saw above. You can confirm this by looking at the `height` element of the list output by `hclust`. This makes sense: the smallest dissimilarity between our data points is exactly the smallest observed Euclidean distance between the points.
+```{r}
+hc.out <- hclust(dist(scale(df)), method = "complete")
+plot(hc.out)
+
+hc.out$height
+```
+
+## Dataset
+
+Let's import the same stellar dataset we used in the previous lab.
+```{r}
+file.path <- "https://raw.githubusercontent.com/pefreeman/36-290/master/EXAMPLE_DATASETS/DRACO/draco_photometry.Rdata"
+load(url(file.path))
+df <- data.frame(ra,dec,velocity.los,log.g,mag.g,mag.r,mag.i)
+rm(file.path,ra,dec,velocity.los,log.g,temperature,mag.u,mag.g,mag.r,mag.i,mag.z,metallicity,signal.noise)
+suppressWarnings(library(tidyverse))
+df %>% 
+  filter(.,ra<264 & dec>56 & velocity.los>-350 & velocity.los< -250) %>% 
+  mutate(.,col.gr=mag.g-mag.r,col.ri=mag.r-mag.i) %>% 
+  select(.,-mag.g,-mag.r,-mag.i,-velocity.los) -> df.new
+```
+
+## Question 3
+
+Use the `hclust()` function to build a hierarchical clustering tree for `df.new`, and use the basic `plot()` function to display the dendrogram. Try both complete and average linkage: which one makes for the best-looking output? (This should not be confused with: which one gives the best clustering result? Note: there is no "right" answer here; best-looking is in the eye of the statistical consultant.) Despite talking up the dendrogram in class, is this actually useful output here? Why or why not? If your client asked for a dendrogram, what step might you want to consider taking before providing one? (Note: when calling `plot()`, consider passing the argument `labels=FALSE` to remove the row numbers at the base of dendrogram.)
+```{r}
+# Complete Linkage
+hc.out.complt <- hclust(dist(scale(df.new)), method = "complete")  
+plot(hc.out.complt, labels=FALSE)
+
+# Average Linkage
+hc.out.avg <- hclust(dist(scale(df.new)), method = "average")
+plot(hc.out.avg, labels=FALSE)
+```
+```
+The complete linkage seems to give a best-looking output. The dendrogram shows hierarchical relationship between each observation, which help ue to allocate observations to clusters. The higher the merge, the greater the dissimilarity between clusters. However, for a large sample, we are to read the information. Thus, before providing a dendrogram, we should consider the sample size first, and then extract a set of disjoint clusters, i.e. we need to cut the dendrogram. It is a good idea to use some techniques to show a optimal number of clusters, and then plot the dendrogram with clear distinction between different clusters we choosed.
+```
+
+## Question 4
+
+Use the `cutree()` function to map each observation to a cluster, then use `ggpairs()` to display the clusters in a similar manner as above for K-means. Assume the same number of clusters as you did for K-means. Does the output look the same or different from K-means? Is this what you expected? Why or why not? (Hint: if `cluster` is the output from `cutree()`, then `color=factor(cluster)` will properly color each of the points.) Visualizing the output of hierarchical clustering in this manner (rather than using a dendrogram) is better when the sample size is large.
+```{r}
+suppressMessages(library(GGally))
+library("gtools", warn.conflicts = FALSE)
+hc.out.cut <- cutree(hc.out.complt, k = 2)    # in last lab, we know that the optimal value by K-means is 2
+
+# visualize the output
+ggpairs(df.new, mapping=aes(color=factor(hc.out.cut)), progress = FALSE)
+
+# draw a dendrogram with a border
+plot(hc.out.complt, labels=FALSE)
+rect.hclust(hc.out.complt, k = 2, border = 2:3)
+```
+```
+It is not what I expected, since cluster 2 has few observations, and the size of the two clusters is really different, this may be because the complete method will merge outliers late using maximum distances, whereas Kmeans seems to produce more general clusters. 
+```
+
+## Question 5
+
+Implement a GMM-based analysis using the `ClusterR` package, analogous to what is in the notes. Assume *two* clusters. Your final goal is to figure out the proportions of the observations that can be confidently placed in either Cluster 1 or Cluster 2 (cluster probabilities &gt;0.95). The placement of the rest of the observations can be considered ambiguous. As a reminder, one of the outputs from `predict_GMM` is `cluster_proba`. Here, that will be a 1218 x 2 matrix, where the probabilities on each row sum to 1. So, determine how many values in the first column of `cluster_proba` are either &lt;0.05 (the datum is to be associated with *Cluster 2* with high probability) or &gt;0.95, then divide by the number of rows in `cluster_proba`. 
+
+(Note: you will have to install `ClusterR` before completing this question.)
+```{r}
+suppressWarnings(library(ClusterR))
+gmm.out <- GMM(df.new, gaussian_comps=2)
+pred.gmm <- predict_GMM(df.new, gmm.out$centroids, gmm.out$covariance_matrices, gmm.out$weights)
+
+# the proportions of the observations can be confidently placed
+prob <- pred.gmm$cluster_proba
+sum(prob[,1] > 0.95 | prob[,1] < 0.05) / nrow(prob)
+
+# show the distribution of the probabilities of a datum belonging to one cluster
+hist(prob, col="turquoise")
+```

@@ -1,0 +1,70 @@
+---
+title: "Lab_14T"
+author: "36-600"
+date: "Fall 2022"
+output:
+  html_document:
+    toc: no
+    toc_float: no
+    theme: spacelab
+  pdf_document:
+    toc: no
+---
+
+This week's lab is very much do-it-yourself. On `Canvas`, under `Files > DATA`, there is a file called `creditDefault.csv`. Your boss wants to know if any of the variables included in this file, apart from `Default` itself, are important for predicting whether a person will default rather than paying back their credit-card balance.
+
+From the information above, you should construct an appropriate answer. Note that regardless of whether you think a non-ML model is sufficient, you should always check to see if an ML model gives much better predictive results. Also note that your boss is not necessarily looking for plots here...but you'd always want to do *some* EDA, if for no other reason than to ensure you don't have missing data or outliers!
+
+```{r message=FALSE}
+library(tidyverse)
+library(bestglm)
+
+df <- read.csv("Data/creditDefault.csv", header = TRUE, stringsAsFactors=TRUE)
+```
+
+```{r}
+summary(df)
+```
+
+```{r}
+ggplot(data = df, aes(x=Default, fill=Student)) +
+  geom_bar()
+
+ggplot(data = df, aes(x=Default, y=Balance)) +
+  geom_boxplot()
+
+ggplot(data = df, aes(x=Default, y=Income)) +
+  geom_boxplot()
+```
+
+By showing the bar and box plots between predictor and response variables, we can clearly see that there might be some important relationships. For example, non-students tend to have no `Default`, and people who have lower Balance also tend to have no `Default`.
+
+```{r}
+set.seed(1)
+s <- sample(nrow(df), round(0.7*nrow(df)))
+df.train <- df[s,]
+df.test <- df[-s,]
+
+y <- df.train$Default
+df.train <- df.train[,-4]
+df.train <- data.frame(df.train,"y"=y)
+
+y <- df.test$Default
+df.test <- df.test[,-4]
+df.test <- data.frame(df.test,"y"=y)
+```
+
+```{r message=FALSE}
+bg.out <- bestglm(df.train, family = binomial, IC = "AIC")
+bg.out$BestModel
+```
+
+Use the bestglm to perform best subset selection on the training data. There are 2 predictor variables retained in the best models. They are `Student` and `Balance`, which conforms to our conjecture in the EDA.
+
+```{r message=FALSE}
+summary(bg.out$BestModel)
+```
+
+We can see all coefficients are statistically significant. By comparing the Null deviance and Residual deviance, and calculating the p-value, we also know that the model is highly useful to predict response variable `Balance`.
+
+
