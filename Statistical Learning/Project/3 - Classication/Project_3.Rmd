@@ -1,0 +1,366 @@
+---
+title: "Project 3"
+author: "Qinzhi Peng"
+date: "Fall 2022"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+# load libraries
+library(tidyverse)
+library(corrplot)
+library(GGally)
+library(bestglm)
+library(pROC)
+library(FNN)
+library(e1071)
+library(rpart)
+library(randomForest)
+
+# read csv file and convert it to data frame
+df <-  data.frame(read.csv("wineQuality.csv", head = TRUE, stringsAsFactors = TRUE))
+```
+
+## Exploratory Data Anaylsis
+
+### Basic Information
+#### Observations
+
+First, We can see a few observations below. It seems that there is no obviously non-informative column.
+
+```{r}
+# see a few observations
+head(df)
+```
+
+#### Data Description
+
+Get some basic information for this new data set. 
+
+```{r}
+str(df)
+```
+
+There are 6497 rows and 12 columns in the data set. It contains 11 predictor variables - all are quantitative, and a response variable that is `label`.
+
+### Data Distributions
+#### Response variable
+
+Show distributions of the response variable `label`.
+
+```{r}
+ggplot(data = df, mapping=aes(x = label)) +
+  geom_bar(fill="blue") + 
+  ggtitle("Label Distribution")
+```
+
+We can see that two classes are unbalanced, so we should not assume a class-separation threshold of 0.5.
+
+#### Predictor Variables
+
+```{r}
+df.qnt <- df %>% 
+  dplyr::select(-label) %>%
+  gather()
+
+#  visualize the data in multiple columns, side by side
+ggplot(data = df.qnt, mapping = aes(x = value)) +
+  geom_histogram(color = "blue", fill = "yellow", bins = 30) +
+  facet_wrap(~ key, scales = 'free') 
+```
+
+We can see there are a few variables are highly right-skewed, like `free.sd`, `sugar`. So we will do the transformation for these variables.
+
+####  response vs. predictor variables
+
+Show grouped box plots of `label` versus all the predictor variables for the log data set.
+
+```{r}
+num.qnt <- 11
+
+ggplot(data = df.qnt, mapping = aes(x = rep(df$label, num.qnt), y = value)) +
+  geom_boxplot(color="red", fill="blue") +
+  facet_wrap(~ key, scales = 'free_y') +
+  ylab("price")
+```
+
+We can see there are some clear associations between the `label` and predictor variables. For example, with a great percentage of alcohol, the `label` is more likely to be GOOD. That implies we can produce some statistical model to predict `label` with these variables. 
+
+
+### Data Processing
+#### Summary
+
+Get a textual summary of the data set and it seems that there are no missed values or weird values in the data set.
+
+```{r}
+summary(df)
+```
+
+#### Data Transformation
+
+Do the log transformation for highly skewed variables.
+
+```{r}
+# define a new data set for the log transformation
+df.log <- df
+df.log$vol.acid = log(df.log$vol.acid)
+df.log$chlorides = log(df.log$chlorides)
+df.log$free.sd = log(df.log$free.sd)
+df.log$sulphates = log(df.log$sulphates)
+df.log$sugar = log(df.log$sugar)
+
+df.qnt.log <- df.log %>% 
+  dplyr::select(-label) %>%
+  gather()
+
+#  visualize the data in multiple columns, side by side
+ggplot(data = df.qnt.log, mapping = aes(x = value)) +
+  geom_histogram(color = "blue", fill = "yellow", bins = 30) +
+  facet_wrap(~ key, scales = 'free') 
+```
+
+#### Removing Outliers
+
+As we can see in the figures, there are some obvious outliers in the data set. 
+
+```{r}
+df.new <- df.log
+# examine outliers
+df[which(df.log$citric > 1),]
+df[which(df.log$total.sd > 350),]
+
+# define the indexes of outliers
+index.outiers <-  which(df.log$citric > 1 | df.log$total.sd > 350)
+
+# define new data set
+df.new <- df.log[-index.outiers,]
+```
+
+These outliers have really large `citric` and `total.sd` values, we think these observations maybe are some special cases. Then, we remove all these outliers before training our model.
+
+```{r}
+# visualize the data after the data processing
+df.qnt.new <- df.new %>% 
+  dplyr::select(-label) %>%
+  gather()
+
+ggplot(data = df.qnt.new, mapping = aes(x = value)) +
+  geom_histogram(color = "blue", fill = "yellow", bins = 30) +
+  facet_wrap(~ key, scales = 'free') 
+```
+After the log transformation and the removal of outliers, we can see that the distributions predictors appear to not be highly skewed.
+
+### Correlation
+
+```{r}
+df.new %>% 
+  dplyr::select(-label) %>%
+  ggpairs(lower = list(combo = wrap("facethist", binwidth = 0.8)), progress=FALSE)
+```
+
+We can clearly see the correlation coefficients between the `total.sd` and `free.sd` is all greater than 0.7, which means they are correlated. Since our goal is prediction, the multicollinearity is acceptable in this case.
+
+
+## Model Selection
+### Split the data 
+
+Split the data into training and test sets in a 70%-30% ratio. 
+
+```{r}
+# split the response and predictors
+response   <- df.new[,12]  
+predictors <- data.frame(scale(df.new[,-12]))
+
+# split training and test
+set.seed(100)
+s <- sample(nrow(df.new), round(0.7*nrow(df.new)))
+pred.train <- predictors[s,]
+pred.test <- predictors[-s,]
+resp.train <- response[s]
+resp.test <- response[-s]
+df.train <- cbind(pred.train,resp.train)
+df.test <- cbind(pred.test,resp.test)
+```
+
+### Logistic Regression
+
+First, we do the Logistic Regression between response and predictor variables. Also, we output Class 1 probabilities and record its ROC result.
+
+```{r}
+out.glm = glm(resp.train ~ ., data = pred.train, family = binomial)
+# extract Class 1 probabilities
+resp.prob.glm = predict(out.glm, newdata = pred.test, type = "response")  
+# output a few of probabilities
+resp.prob.glm[1:10]
+```
+
+```{r message=FALSE}
+roc.glm = roc(resp.test, resp.prob.glm)
+```
+
+Meanwhile, we perform the Best-subset-selection for Logistic model, and use the best model to get Class 1 probabilities.
+
+```{r message=FALSE}
+# expect the response variable to be named y
+y <- df.train$resp.train
+df.train.bestglm <- df.train[,-12]
+df.train.bestglm <- data.frame(df.train.bestglm,"y"=y)
+y <- df.test$resp.test
+df.test.bestglm <- df.test[,-12]
+df.test.bestglm <- data.frame(df.test.bestglm,"y"=y)
+
+# variable selection
+out.aic <- bestglm(df.train.bestglm, family = binomial, IC = "AIC")
+out.aic$BestModel
+
+# get class 1 prob
+resp.prob.bestglm = predict(out.aic$BestModel, newdata = df.test.bestglm, type = "response") 
+```
+
+For the AIC, there are 7 predictor variables retained in the best models, which are `vol.acid`, `sugar`, `free.sd`, `total.sd`, `density`, `sulphates`, and `alcohol`.
+
+```{r message=FALSE}
+resp.prob.bestglm[1:10]
+
+roc.bestglm = roc(resp.test, resp.prob.bestglm)
+```
+
+### Classification Trees
+```{r}
+out.rpart = rpart(resp.train ~ .,data = pred.train)
+# extract Class 1 probabilities
+resp.prob.rpart = predict(out.rpart, newdata = pred.test, type="prob")[,2]
+resp.prob.rpart[1:10]
+```
+
+```{r message=FALSE}
+roc.rpart = roc(resp.test, resp.prob.rpart)
+```
+
+### Random Forest
+
+```{r message=FALSE}
+out.rf = randomForest(resp.train ~ ., data = pred.train, importance=TRUE)
+# extract Class 1 probabilities
+resp.prob.rf = predict(out.rf, newdata = pred.test, type="prob")[,2]
+resp.prob.rf[1:10]
+```
+
+```{r message=FALSE}
+roc.rf = roc(resp.test, resp.prob.rf)
+```
+
+### KNN
+
+For the KNN model, we need to first choose the best `k` value.
+
+```{r}
+k.max = 30
+mcr.k = rep(NA,k.max)
+for ( kk in 1:k.max ) {
+  knn.cv = knn.cv(train = pred.train, cl = resp.train, k = kk) 
+  mcr.k[kk] = mean(knn.cv!=resp.train)
+}
+k.min = which.min(mcr.k)
+cat("The optimal number of nearest neighbors is ",k.min,"\n")
+```
+
+Plot the validation-set MCR versus k.
+
+```{r}
+# plot the validation-set MCR versus k
+ggplot(data=data.frame("k"=1:k.max, "mcr"=mcr.k), mapping=aes(x=k, y=mcr)) + 
+  geom_point() + geom_line() +
+  xlab("Number of Nearest Neighbors k") + ylab("Validation MCR") + 
+  geom_vline(xintercept=k.min,color="red")
+```
+
+```{r}
+out.knn = knn(train = pred.train, test = pred.test, cl = resp.train, k = k.min, algorithm="brute", prob=TRUE)
+# get class 1 probabilities
+resp.prob.knn = attributes(out.knn)$prob
+w = which(out.knn=="BAD") 
+resp.prob.knn[w] = 1 - resp.prob.knn[w]
+# output a few probs
+resp.prob.knn[1:10]
+```
+
+```{r message=FALSE}
+roc.knn = roc(resp.test, resp.prob.knn)
+```
+
+### SVM
+
+For the SVM model, it will take a long time to determine an optimal `cost` value. Thus, We just assume `cost = 1` here, which might not be optimal but save time. We also try both linear and polynomial kernels in the SVM models.
+
+```{r warning=FALSE}
+# linear kernel
+out.svm.linear  = tune(svm, resp.train ~ . , data = df.train, kernel="linear", ranges=list(cost=1), prob = TRUE)
+resp.pred.svm.linear = predict(out.svm.linear$best.model, newdata=df.test, prob = TRUE)
+resp.prob.svm.linear = attributes(resp.pred.svm.linear)$prob[, 1]
+# show a few probs
+resp.prob.svm.linear[1:10]
+
+# polynomial kernel
+out.svm.poly = tune(svm, resp.train ~ ., data = df.train, kernel="polynomial", ranges=list(cost=1, degree=2:4), prob = TRUE)
+resp.pred.svm.poly = predict(out.svm.poly$best.model, newdata=df.test, prob = TRUE)
+resp.prob.svm.poly = attributes(resp.pred.svm.poly)$prob[, 1]
+# show a few probs
+resp.prob.svm.poly[1:10]
+```
+
+```{r message=FALSE}
+roc.svm.linear = roc(resp.test, resp.prob.svm.linear)
+roc.svm.ploy = roc(resp.test, resp.prob.svm.poly)
+```
+
+### ROC curves & AUC
+
+Plot and compare ROC curves for different model, and output their AUC values.
+
+```{r message=FALSE}
+ggroc(list(LG = roc.glm, BestGLM = roc.bestglm, CT = roc.rpart, RF = roc.rf, KNN = roc.knn, SVM.linear = roc.svm.linear, SVM.ploy = roc.svm.ploy),) + theme_light() + ggtitle("ROC Curves")
+```
+
+
+```{r}
+knitr::kable(data.frame(roc.glm$auc, roc.bestglm$auc, roc.rpart$auc, roc.rf$auc, roc.knn$auc, roc.svm.linear$auc, roc.svm.ploy$auc))
+```
+
+We can see clearly that the Random Forest model has the highest AUC value. So we use this model to make class predictions.
+
+## Prediction
+### class-separation Threshold
+
+Use Youden’s J statistic to determine the optimal class-separation threshold. We assume that sensitivity and specificity are equally important.
+
+```{r message=FALSE}
+# find the threshold associated with that maximum value
+optimal.idx <- which.max(roc.rf$sensitivities + roc.rf$specificities - 1)
+# the optimal class-separation threshold
+threshold <- roc.rf$thresholds[optimal.idx]
+threshold
+```
+
+The optimal threshold is 0.611, which approaches the proportion of two classes. Then, using the threshold, we make class predictions for the Random Forest model.
+
+### Confusion Matrix
+
+```{r}
+# class predictions
+resp.pred.rf <- as.factor(ifelse(resp.prob.rf > threshold, "GOOD", "BAD"))
+# create a confusion matrix 
+tab.rf <- table(resp.pred.rf, resp.test)
+tab.rf
+```
+
+From the confusion matrix, we can see we will get more false negatives than false positives in the prediction.
+
+### Misclassification rate
+
+```{r}
+misrate.test <- 1-sum(diag(tab.rf))/sum(tab.rf)
+misrate.test
+```
+
+The misclassification rate is 0.18. That means our model is good for predictions and also has relatively high sensitivity and specificity. 

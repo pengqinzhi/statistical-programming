@@ -1,0 +1,280 @@
+---
+title: "Project 2"
+author: "Qinzhi Peng"
+date: "Fall 2022"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+# load libraries
+library(tidyverse)
+library(corrplot)
+library(GGally)
+library(bestglm)
+
+# read excel file and convert it to data frame
+df <-  data.frame(read.csv("diamonds.csv", head = TRUE, stringsAsFactors = TRUE))
+```
+
+## Exploratory Data Anaylsis
+
+### Basic Information
+#### Observations
+
+First, We can see a few observations below. It seems that `X` is an obviously non-informative column, so we will remove this column in the new data set.
+
+```{r}
+# see a few observations
+head(df)
+
+# define the new data set
+df %>% dplyr::select(-X) -> df
+```
+
+#### Data Structure
+
+Get some basic information for this new data set. 
+
+```{r}
+str(df)
+```
+
+There are 53940 rows and 10 columns in the data set. It contains 9 explanatory variables - 6 numeric variables that are `carat`, `depth`, `table`, `x`, `y`, and `z`, 3 factor variables that are `cut`, `color`, and `clarity`, and a response variable that is `price`. 
+
+#### Summary
+
+Get a textual summary of the data set and it seems that there are no missed values or weird values in the data set.
+
+```{r}
+summary(df)
+```
+
+### Data Distributions
+#### Categorical Predictors
+
+Create a faceted histogram for all categorical predictors that are  `cut`, `color`, and `clarity`. We can see the distributions of those predictors below.
+
+```{r, warning=FALSE}
+df.cat <- df %>% 
+  dplyr::select(cut, color, clarity) %>%
+  gather()
+
+#  visualize the data in multiple columns, side by side
+ggplot(data = df.cat, mapping = aes(x = value)) +
+  geom_bar(color="red",fill="blue") +
+  facet_wrap(~ key, scales = 'free_x') 
+```
+
+#### Quantitative Variables
+
+Show distributions of the response variable `price`, as well as other quantitative predictors that are `carat`, `depth`, `table`, `x`, `y`, and `z`. 
+
+```{r}
+ggplot(data = df, mapping=aes(x = price)) +
+  geom_histogram(fill="blue", bins=60) + 
+  ggtitle("Price Distribution")
+```
+
+```{r}
+df.qnt <- df %>% 
+  dplyr::select(carat, depth, table, x, y, z) %>%
+  gather()
+
+#  visualize the data in multiple columns, side by side
+ggplot(data = df.qnt, mapping = aes(x = value)) +
+  geom_histogram(color = "blue", fill = "yellow", bins = 30) +
+  facet_wrap(~ key, scales = 'free') 
+```
+
+We can see that the distribution of the response variable and the distributions of the `carat` are highly right-skewed. For the `y` and `z`, they have some outliers that have a great impact in their distributions, so we will deal with it later.
+
+### Data Processing
+#### Data Transformation
+
+Construct a log transformation for highly-skewed variables. We will see that it can improve the prediction of the linear model later.
+
+```{r}
+# define a new data set for the log transformation
+df.log <- df
+df.log$price = log(df.log$price)
+df.log$carat = log(df.log$carat)
+```
+
+#### Outliers
+
+Show scatter plots of `price` versus all the quantitative predictor variables for the log data set.
+
+```{r}
+num.qnt <- 6
+df.qnt.log <- df.log %>% 
+  dplyr::select(carat, depth, table, x, y, z) %>%
+  gather()
+
+ggplot(data = df.qnt.log, mapping = aes(x = value, y = rep(df.log$price, num.qnt))) +
+  geom_point(size = 0.1) +
+  facet_wrap(~ key, scales = 'free_x') +
+  ylab("price")
+```
+
+We can see there are clear associations between the `price` and all quantitative predictor variablesThat implies we can produce some statistical model to predict `Balance` with these variables. 
+
+Also, As we can see in the figures, there are some obvious outliers in the data set. we can analysis those observations below.
+
+```{r} 
+# find outliers in each figure and show those observations in the original data
+df[which(df.log$table > 90),]
+df[which(df.log$depth < 50 | df.log$depth > 75),]
+df[which(df.log$y > 20),]
+df[which(df.log$z > 30),]
+
+# 0 length, width, depth
+df[which(df$z == 0 | df$y == 0 | df$x == 0),]
+
+# define the indexes of outliers
+index.outiers <-  which(df.log$table > 90 | df.log$depth < 50 | df.log$depth > 75 | df.log$y > 20 | df.log$z > 30 | df$z == 0 | df$y == 0 | df$x == 0)
+```
+
+These outliers have really large `table`, `depth`, `y` or `z` values, we think these observations maybe are some special cases. Also, there are some points that have zero `x`, `y` or `z` values, that makes no sense. Then, we remove all these outliers before training our model.
+
+```{r}
+df.new <- df.log[-index.outiers,]
+
+# visualize the data after the data processing
+df.qnt.log <- df.new %>% 
+  dplyr::select(carat, depth, table, x, y, z) %>%
+  gather()
+
+ggplot(data = df.qnt.log, mapping = aes(x = value)) +
+  geom_histogram(color = "blue", fill = "yellow", bins = 30) +
+  facet_wrap(~ key, scales = 'free') 
+```
+After the log transformation and the removal of outliers, we can see that the distributions predictors appear to not be highly skewed. We can also examine the summary of the new data set below.
+
+```{r}
+summary(df.new)
+```
+### Correlation
+
+Visually determine the level of correlation between all the predictor variables.
+
+```{r}
+# select random sample from the data set
+df.sample <- df.new[sample(nrow(df.new), size=500),]
+
+df.sample %>% 
+  dplyr::select(carat, depth, table, x, y, z, cut, color, clarity) %>%
+  ggpairs(lower = list(combo = wrap("facethist", binwidth = 0.8)), progress=FALSE)
+```
+
+For all quantitative predictors, we can clearly see the correlation coefficients among the `x`, `y`, and `z` are all greater than 0.9, which means they are mutually highly correlated. Also, the `carat` have high correlations with the `x`, `y`, and `z`. That makes sense since the greater volume, the greater weight for an object.
+
+Besides, it seems to have some relationships between quantitative predictors and categorical Predictors. For example, for a diamond with the Very Good `cut`, it appears to have relatively lower `carat`, `depth`, `table`, `x`, `y`, and `z`; a diamond with better `color` appears to have larger `x`, `y`, and `z`; for a diamond with the SI1 or VVS2 `clarity`, it appears to have relatively lower `carat`, `table`, `x`, `y`, and `z`.
+
+
+## Linear Regression
+### Split the data 
+
+Split the data into training and test sets in a 70%-30% ratio. 
+
+```{r}
+set.seed(100)
+s <- sample(nrow(df.new), round(0.7*nrow(df.new)))
+df.train <- df.new[s,]
+df.test <- df.new[-s,]
+```
+
+### Model Summary
+
+Perform a multiple linear regression analysis and examine the output.
+
+```{r}
+lm.out <- lm(price ~ ., data = df.train)
+summary(lm.out)
+```
+
+The linear model appear to fit really well. Most of coefficients are statistically significant, and adjusted R-squared is about 0.98 which is really high. That means our linear model is informative.
+
+### Prediction
+#### Diagnostic Plot
+
+Use the linear model to predict the test data set and create a diagnostic plot showing the predicted price (y-axis) versus the observed price (x-axis).
+
+```{r}
+price.pred <- predict(lm.out, newdata = df.test)
+
+ggplot(data = df.test, mapping = aes(x = price, y = price.pred)) +
+  geom_point(size=0.5) +
+  geom_abline(colour="red")
+```
+From the figure, all predicted values appear to lie on the diagonal line, which means the linear model performs pretty well for all values. Also, the plot looks better than the one before the transformation.
+
+#### MSE
+
+Compute the mean-squared error for the linear model.
+
+```{r}
+mse.full <- mean((df.test$price - price.pred)^2)
+mse.full
+```
+We can see that the MSE on the test-set data is about 0.2.
+ 
+#### Residuals
+
+Show the histogram of residuals.
+
+```{r}
+hist(df.test$price - price.pred)
+```
+
+We can see the distribution looks approximately normal. That also means the transformation makes for better model predictions.
+ 
+## Best-subset-selection Analysis
+### Model
+
+Perform best subset selection on the training data by doing both AIC and BIC.
+
+```{r}
+bg.out.aic <- bestglm(df.train, family = gaussian, IC = "AIC")
+bg.out.aic$BestModel
+bg.out.bic <- bestglm(df.train, family = gaussian, IC = "BIC")
+bg.out.bic$BestModel
+```
+
+For the AIC model, it choose `carat`, `cut`, `color`, `clarity`, `depth`, ` table`, and `x` as important predictor variables for the predictions; For the BIC model, it choose `carat`, `cut`, `clarity`, `depth`, ` table`, and `x` as important predictor variables. We can see that the BIC model is a subset of the AIC model.
+
+### Prediction & MSE
+
+```{r}
+pred.aic <- predict(bg.out.aic$BestModel, newdata=df.test)
+mse.aic <- mean((pred.aic - df.test$y)^2)
+mse.aic
+
+pred.bic <- predict(bg.out.bic$BestModel, newdata=df.test)
+mse.bic <- mean((pred.bic - df.test$y)^2)
+mse.bic
+```
+
+Compared to the full set of predictors, the new MSE for the AIC and BIC models are both about 5.02, which are greater than the one we got form the full model. That means if our goal is to make some predictions we can just leave all variables.
+
+## PCA analysis
+
+Do a simple PCA analysis on the quantitative predictors.
+
+```{r}
+# select quantitative predictors
+df.qnt.new <- df.new %>% 
+  dplyr::select(carat, depth, table, x, y, z)
+
+pca.out <- prcomp(df.qnt.new, scale=TRUE)
+pca.var <- pca.out$sdev ^2
+pve <- pca.var / sum(pca.var)
+
+ggplot(data = data.frame(pve), aes(x=1:6, y=cumsum(pve))) +
+  geom_line()+
+  geom_point() +
+  xlab("Principal Component ") +
+  ylab("Cumulative Proportion of Variance Explained")
+```
+
+To explain 90% of the overall variance, we can only retain 3 PCs. That means the “true” dimensionality of the quantitative predictor variables is three, which conforms to the analysis of multicollinearity  before.
+

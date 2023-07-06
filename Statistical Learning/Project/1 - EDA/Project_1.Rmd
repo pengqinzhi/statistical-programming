@@ -1,0 +1,170 @@
+---
+title: "Project 1"
+author: "Qinzhi Peng"
+date: "Fall 2022"
+output: html_document
+---
+
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+# load libraries
+library(tidyverse)
+library(corrplot)
+library(GGally)
+
+# read excel file and convert it to data frame
+df <-  data.frame(read.csv("creditBalance.csv", head = TRUE, stringsAsFactors = TRUE))
+```
+
+## Exploratory Data Anaylsis
+
+### Basic Information
+#### Data Structure
+
+Get some basic information for this data set. 
+
+```{r}
+str(df)
+```
+
+There are 310 rows and 10 columns in the data set. It contains 9 explanatory variables - 6 numeric variables that are `Income`, `Limit`, `Rating`, `Cards`, `Age`, and `Education`, 3 factor variables that are `Gender`, `Student`, and `Married`, and a response variable that is `Balance`. 
+
+#### Observations
+
+We can also see a few observations below. It seems that there are no obviously non-informative columns.
+
+```{r}
+head(df)
+```
+
+#### Summary
+
+Get a textual summary of the data set and see if there are missing data or if anything appears weird.
+
+```{r}
+summary(df)
+```
+
+From the summary, it seems that there are no missed values or weird values in the data set. We can check that there are no NA values as well. 
+
+```{r}
+which(is.na(df))
+```
+
+### Data Distributions
+#### Response Variable
+
+Show the distribution of the response variable `Balance`.
+
+```{r}
+ggplot(data = df, mapping=aes(x = Balance)) +
+  geom_histogram(fill="blue", bins=60) + 
+  ggtitle("Balance Distribution")
+```
+
+We can see that most of values lie between 0 and 1500. There is only one person whose balance is 1999.
+ 
+#### Quantitative Predictors
+
+Create a faceted histogram for all quantitative predictors that are `Income`, `Limit`, `Rating`, `Cards`, `Age`, and `Education`. 
+
+```{r}
+df.qnt <- df %>% 
+  dplyr::select(Income, Limit, Rating, Cards, Age, Education) %>%
+  gather()
+
+#  visualize the data in multiple columns, side by side
+ggplot(data = df.qnt, mapping = aes(x = value)) +
+  geom_histogram(color = "blue", fill = "yellow", bins = 30) +
+  facet_wrap(~ key, scales = 'free_x') 
+```
+
+We can see the `Age` are relatively uniformly distributed with most of values lying between 20 and 85. For the `Cards`, most of people have less than 5 cards, and only one person has 8 cards and one has 9 cards. the `Education` seems to be normally distributed, and only one person has level 5 education and two have level 20 education. the `Income` is right skew, we may handle this depend on models we will use in the future. For the `Limit` and `Rating`, there are also some big outliers we may need to handle later. 
+
+#### Categorical Predictors
+
+Create a faceted histogram for all categorical predictors that are  `Gender`, `Student`, and `Married`.
+
+```{r, warning=FALSE}
+df.cat <- df %>% 
+  dplyr::select(Gender, Student, Married) %>%
+  gather()
+
+#  visualize the data in multiple columns, side by side
+ggplot(data = df.cat, mapping = aes(x = value)) +
+  geom_bar(color="red",fill="blue") +
+  facet_wrap(~ key, scales = 'free_x') 
+```
+
+In this data set, there are similar numbers of males and females, more people who are married, and more people who are not students.
+
+### Data Statistics
+#### Quantitative Predictors
+
+Show scatter plots of `Cost` versus all the quantitative predictor variables.
+
+```{r}
+num.qnt <- 6
+ggplot(data = df.qnt, mapping = aes(x = value, y = rep(df$Balance, num.qnt))) +
+  geom_point(size = 0.1) +
+  facet_wrap(~ key, scales = 'free_x') +
+  ylab("Credit Balance")
+```
+
+We can see there are clear associations between the `Balance` and all quantitative predictor variables, for example, the higher limit, the greater credit balance; the higher rating, the greater credit balance; the higher income, the greater credit balance, which all makes sense. That implies we can produce some statistical model to predict `Balance` with these variables. 
+
+There is a outlier in the data set. we need to analysis this observation below.
+```{r}
+df[which(df$Balance == max(df$Balance)),]
+```
+
+Although it is an outlier, we should not remove it, since the person has high-level education, great age, high limit, rating and income, it makes sense that he has a great credit balance.
+
+#### Categorical Predictors
+
+Show side-by-side boxplots of `Cost` versus all the categorical predictor variables.
+
+```{r}
+num.cat <- 3
+ggplot(data = df.cat, mapping = aes(x = value, y = rep(df$Balance, num.cat))) +
+  geom_boxplot() +
+  facet_wrap(~ key, scale = 'free_x') +
+  ylab("Credit Balance")
+```
+
+We can see that females appear to have greater balance than males, and people who are not married appear to have greater balance than those who are married. It is noteworthy that students have much greater credit balances than non-students.
+
+### Correlation
+#### All predictors
+
+Visually determine the level of correlation between all the predictor variables.
+
+```{r}
+df %>%
+  dplyr::select(Income, Limit, Rating, Cards, Age, Education, Gender, Student, Married) %>%
+  ggpairs(lower = list(combo = wrap("facethist", binwidth = 0.8)), progress=FALSE)
+```
+
+We can see the correlation coefficients within the `Income`, `Limit`, and `Rating` are all greater than 0.8, which means they are mutually highly correlated. There are some relationships between `Student` and `Age` as well as `Student` and `Education`, which makes sense since students are always young people with higher education. Among all categorical predictors, there seems to be a correlation between the `Student` and `Married`, we will check it later. It is noteworthy that the number of students is relatively small in this data set, we may need more sample to get a reasonable conclusion.
+
+#### Quantitative Predictors
+
+Show a correlation plot between all quantitative predictor variables since the `ggpairs` plot gets messy above.
+
+```{r}
+df %>%
+  dplyr::select(Income, Limit, Rating, Cards, Age, Education) %>%
+  cor() %>%
+  corrplot(method="ellipse")
+```
+
+We can clearly see that `Income`, `Limit`, and `Rating` are mutually correlated. In order to achieve better results, we may need to drop the redundant predictors in models. 
+
+#### Categorical Predictors
+
+Show a table between the `Student` and `Married`.
+
+```{r}
+table(df$Student, df$Married)
+```
+
+We can see that the number of students who are not married is much larger than the number of students who are married. That makes sense since people tend to get married after their graduation.
