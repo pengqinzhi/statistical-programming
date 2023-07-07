@@ -1,0 +1,559 @@
+---
+title: "Project H"
+author: "Cathy Liu, Qinzhi Peng"
+date: '2022-06-26'
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    theme: cerulean
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Abstract
+
+This project analyzes suggestions to upper management posted by employees from a large human resource company, in order to figure out which suggestions are recommended to follow up upon. The data set is from the online forum of the human resource company. And our report has the following sections: 
+
+- Introduction
+- Exploratory Data Analysis
+- Variable Selection
+- Model Comparison and Selection
+- Analysis
+- Conclusion and Further Work
+- Our Takeaway from this Project 
+- Reference
+
+
+### Introduction 
+
+This project is a classic binary classification problem. There are around 16,000 suggestions in the data set and different suggestions are labeled in either 1(recommended) or 0(not recommended). Other information provided include number of posts(suggestions), responses, views, Votes_Up, Votes_Down, as well as author information, including number of days authors have been with the company, their total posts and posts per day. 
+
+In this project, we will explore several different models, e.g., logistic regression, LDA, trees and etc., and will evaluate their performances using methods such as cross validation and confusion matrix. With the help of the models, we are hoping to find out the best combination of attributes that make a 'good' suggestion, and hopefully gain some insights into this project. 
+
+
+### Exploratory Data Anaylsis
+
+In this session, we explore the data to better understand its structure and relationship. Before we start the analysis, we need to upload the libraries. 
+
+```{r message=FALSE, warning=FALSE}
+# load libraries
+library(gbm)
+library(rpart)
+library(partykit)
+library(ggplot2)
+library(ISLR)
+library(MASS)
+library(klaR)  
+library(knitr)
+library(glmnet)
+library(plyr)
+library(gam)
+library(readxl)
+library(caret)
+library(pROC)
+library(dplyr)
+library(magrittr)
+```
+
+First, let us take a look at the first few rows of, as well as the structure of the data. 
+
+```{r}
+# read excel file and convert it to data frame
+suggest <- read_excel('suggestions.csv.xlsx')
+suggest <- data.frame(suggest)
+
+# print first five rows of the excel file and the structure of the data 
+head(suggest)
+str(suggest)
+
+
+```
+
+From the table below, we can tell that the recommended topics to follow up from the data is 562, compared to 15,867 non-recommended topics. And since one of the column names is too long, we rename that column as a matter of convenience. 
+
+```{r}
+# get a table of number of Recommended vs non-recommended
+with(suggest, table(Recommended, Recommended))
+nrow(suggest)
+
+# rename a column
+names(suggest)[names(suggest) == "Author_Join..in.terms.of.how.many.days.since.they.joined."] <- "Author_JoinDays"
+
+# remove columns: Suggestion_Id and Author_Id from our data set 
+suggest.subset <- suggest[, c('Recommended', 'Responses', 'Views', 'Votes_Up', 'Votes_Down', 'Author_JoinDays', 
+                              'Author_TotalPosts', 'Author_PostsPerDay')]
+
+# split training set and test set
+set.seed(1)
+split <- sample(1:nrow(suggest.subset),round(nrow(suggest.subset)*2/3))
+train <- suggest.subset[split,]
+test <- suggest.subset[-split,]
+
+# Extract covariates matrix and  response variable (for lasso)
+suggest.x <- as.matrix(suggest.subset[, -which(names(suggest.subset) == "Recommended")])
+suggest.y <- suggest.subset$Recommended
+```
+
+From the data set, we know that the number of good suggestions is much less than the number of bad suggestions. Next, we want to see the relationship between Votes_Up and Votes_Down. From the plot below, it seems these two variables are correlated. 
+
+```{r}
+# plot Votes_Down as a function of Votes_Up
+ggplot(data = suggest, mapping = aes(x = Votes_Up, y = Votes_Down)) +
+  geom_point() + 
+  labs(title = "Votes_Up vs Votes_Down")
+
+```
+
+And there is an outlier from the plot, with Votes_Up more than 2000 but relatively much less Votes_Down. We pull out the data below. Even though it looks like an outlier, but it may be just because this suggestion is highly recommended by employees. 
+
+
+```{r}
+# get the outlier 
+suggest[suggest$Votes_Up > 2000, ]
+
+```
+
+
+Below is another plot showing the relationship between Author_PostsPerDay and Author_TotalPosts. These two variables may be correlated as well. There is an outlier, which has Author_PostsPerDay larger than 20. We pulled out the data and found out it is a calculation error, so we removed this outlier.
+
+```{r}
+
+ggplot(data = suggest, mapping = aes(x = Author_PostsPerDay , y = Author_TotalPosts)) +
+  geom_point() + 
+  labs(title = "Author_PostsPerDay vs Author_PostsPerDay")
+
+
+```
+
+```{r}
+# get the outlier and delete it
+suggest[suggest$Author_PostsPerDay > 20, ]
+
+# remove the outlier
+suggest <- suggest[suggest$Author_PostsPerDay < 20, ]
+suggest.subset <- suggest.subset[suggest.subset$Author_PostsPerDay < 20, ]
+
+```
+
+We want to figure out if any the features are highly correlated, and if they are, in order to achieve better results, we may need to drop the redundant features in some of the models we fit, i.e. in logistic regression. 
+
+
+```{r warning=FALSE}
+# correlation function from homework 1
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = pmax(1, cex.cor * r))
+}
+
+# get a plot matrix for the collinearity analysis
+pairs(suggest.subset, lower.panel = panel.cor)
+
+```
+
+We can see `Responses`  `Views`, `Votes_Up`, and `Votes_Down` are highly correlated, `Author_PostsPerDay`and `Author_TotalPosts` are highly correlated.
+
+
+### Variables Selection
+
+First, we use lasso method to find the optimal value of lambda that minimizes the cross-validation error.
+
+```{r}
+set.seed(1)
+suggest.lasso.cv <- cv.glmnet(suggest.x, suggest.y, family = "binomial")
+plot(suggest.lasso.cv)
+```
+
+The plot displays the cross-validation error according to the log of lambda. The left vertical line shows that the log of the optimal value of lambda is approximately -8, which minimizes the prediction error. This lambda value will give the most accurate model. The optimal value is:
+
+```{r}
+suggest.lasso.cv$lambda.min
+```
+Using the min-CV rule, we get the following regression coefficients:
+
+```{r}
+coef(suggest.lasso.cv, s = "lambda.min")
+```
+
+Using the 1-SE rule, This lambda's value is:
+
+```{r}
+suggest.lasso.cv$lambda.1se
+```
+Using the 1-SE rule, we get the following regression coefficients:
+
+```{r}
+coef(suggest.lasso.cv, s = "lambda.1se")
+```
+
+```{r}
+# use min-CV rule
+suggest.lasso.cv$cvm[suggest.lasso.cv$lambda == suggest.lasso.cv$lambda.min]
+
+# use 1SE rule
+suggest.lasso.cv$cvm[suggest.lasso.cv$lambda == suggest.lasso.cv$lambda.1se]
+```
+
+Although the CV error of the lambda.1se model is a bit larger than what we got using lambda.min in the lasso regression, it looks like the model with a small number of predictors does as good a job of prediction. 
+
+
+###  Model Comparison and Selection
+
+#### Logistic Regression
+
+First, we fit the model using all variable:
+
+```{r warning=FALSE}
+suggest.full <- glm(Recommended ~., data = train, family = 'binomial')
+summary(suggest.full)
+```
+
+Since we can use the `Author_JoinDays` and `Author_PostsPerDay` to calculate the `Author_JoinDays`, we can just choose two of these three variable to fit the model. After comparing the AIC and the statistically significance of coefficients, we think that the good combination of attributes for prediction are `Responses`, `Views`, `Votes_Up`, `Votes_Down`, `Author_JoinDays`, and `Author_PostsPerDay`. Now, we can start to fit the logistic regression first using the training set. 
+
+```{r}
+set.seed(1)
+suggest.glm <- glm(Recommended ~ Responses + Views + Votes_Up + Votes_Down + Author_JoinDays + Author_PostsPerDay, data = train, family = 'binomial')
+summary(suggest.glm)
+
+```
+
+All coefficients have very small p-values, meaning they are statistically significant. The intercept is significant too, which means we may have exclude some useful information. Therefore, we will explore other methods later. The coefficient of Views is larger than that of Votes_Up, so the number of views matter more than votes.
+
+We then evaluate our model below. 
+
+```{r}
+# prediction based on the logistic model fitted above
+prob.glm <- predict(suggest.glm, newdata = test, type = 'response')
+pred.glm <- ifelse(prob.glm > 0.5, 1, 0)
+
+# get the confusion matrix
+tab.glm <- confusionMatrix(as.factor(test$Recommended), as.factor(pred.glm), positive = "1")
+tab.glm
+
+# ROC curve
+roc.glm <- roc(as.factor(test$Recommended), prob.glm)
+```
+
+#### Additive Logistic Regression
+
+```{r, fig.width = 8, fig.height = 6}
+set.seed(1)
+suggest.gam <- gam(Recommended ~  s(Responses, 4) + s(Views, 4) + s(Votes_Up, 4) + s(Votes_Down, 4) + s(Author_PostsPerDay, 4), data = train)
+par(mfrow=c(3,2))
+# display the fitted splines for each term
+plot(suggest.gam, col="ForestGreen")
+
+prob.gam <- predict(suggest.gam, newdata=test, type="response")
+pred.gam <- ifelse(prob.gam > 0.5, 1, 0)
+
+# confusion matrix
+tab.gam <- confusionMatrix(as.factor(pred.gam), as.factor(test$Recommended), positive = "1")
+tab.gam
+
+# ROC curve
+roc.gam <- roc(test$Recommended, prob.gam)
+```
+
+We can see the Additive Logistic model has higher accuracy and Specificity than the normal Logistic model, but it has lower sensitivity. That means in this model we have lower chance to regard a 'bad' suggestion as a good one, which is better than the normal Logistic model since what we hate more is when a bad suggestion is mixed with those good suggestions.
+
+#### Naive Bayes
+
+We also run the Naive Bayes, and it turned out to perform a little worse than the model we have run above.
+
+```{r warning=FALSE}
+suggest.nb <- NaiveBayes(factor(Recommended) ~ ., data = train, usekernel=TRUE)
+pred.nb <- predict(suggest.nb, test, type="response")
+
+# confusion matrix
+tab.nb <- confusionMatrix(as.factor(pred.nb$class), as.factor(test$Recommended), positive = "1")
+tab.nb
+
+# ROC curve
+roc.nb <- roc(test$Recommended, pred.nb$posterior[,1])
+```
+
+#### LDA
+
+We run a linear discriminant analysis and quadratic discriminant analysis below. 
+
+```{r, fig.width = 20, fig.height = 16}
+suggest.lda <- lda(Recommended ~ ., train)
+pred.lda <- predict(suggest.lda, test, type="response")
+
+# confusion matrix
+tab.lda <- confusionMatrix(as.factor(pred.lda$class), as.factor(test$Recommended), positive = "1")
+tab.lda
+
+# get bivariate plots showing the LDA decision boundaries
+partimat(factor(Recommended) ~ ., data = train, method = "lda")
+
+# ROC curve
+roc.lda <- roc(as.factor(test$Recommended), pred.lda$posterior[,2])
+```
+
+#### QDA
+
+```{r, fig.width = 20, fig.height = 16}
+suggest.qda <- qda(Recommended ~ ., data = train)
+pred.qda <- predict(suggest.qda, test, type="response")
+
+# confusion matrix
+tab.qda <- confusionMatrix(as.factor(pred.qda$class), as.factor(test$Recommended), positive = "1")
+tab.qda
+
+# get bivariate plots showing the LDA decision boundaries
+partimat(factor(Recommended) ~ ., data = train, method = "qda")
+
+# ROC curve
+roc.qda <- roc(as.factor(test$Recommended), pred.qda$posterior[,2])
+```
+
+It looks that linear discriminant analysis is doing a little better than quadratic discriminant analysis, but overall not as good as logistic regression or additive logistic regression. 
+
+#### KNN
+
+Below is the KNN model we run. 
+
+```{r cache=TRUE}
+set.seed(1)
+ctrl <- trainControl(method="CV", number=10)
+suggest.knn <- train(factor(Recommended) ~ ., data = train, method="knn", trControl = ctrl, tuneLength = 20)
+suggest.knn
+```
+```{r cache=TRUE}
+pred.knn <- predict(suggest.knn, newdata = test)
+
+prob.knn <- predict(suggest.knn, newdata = test, type = "prob")[,2]
+
+tab.knn <- confusionMatrix(as.factor(pred.knn), as.factor(test$Recommended), positive = "1")
+tab.knn
+
+roc.knn = roc(test$Recommended, prob.knn)
+```
+
+#### Comparison
+
+```{r}
+# Source: https://canvas.cmu.edu/courses/29098/files/8114219/download?download_frd=1
+performance.metrics <- data.frame("Logistic" = tab.glm$byClass,"Additive Logistic" = tab.gam$byClass,"NB" = tab.nb$byClass,
+                                  "LDA" = tab.lda$byClass, "QDA" = tab.qda$byClass, "KNN" = tab.knn$byClass)
+
+performance.metrics <- rbind(performance.metrics, c(roc.glm$auc, roc.gam$auc, roc.nb$auc, roc.lda$auc, roc.qda$auc, roc.knn$auc))
+performance.metrics <- t(performance.metrics)
+colnames(performance.metrics)[12] <- "AUC"
+performance.metrics <- as.data.frame(performance.metrics)
+performance.metrics <- performance.metrics %>% dplyr::select("AUC", everything())
+performance.metrics <- cbind(performance.metrics, rownames(performance.metrics))
+colnames(performance.metrics)[13] <- "Model"
+
+perf.sens <- performance.metrics %>% dplyr::select("Sensitivity", "Model") %>% dplyr::mutate(score = rep("Sensitivity", 6))
+perf.spec <- performance.metrics %>% dplyr::select("Specificity", "Model") %>% dplyr::mutate(score = rep("Specificity", 6))
+perf.PPV <- performance.metrics %>% dplyr::select("Pos Pred Value", "Model") %>% dplyr::mutate(score = rep("PPV", 6))
+
+colnames(perf.sens) <- c("Score", "Model", "Method")
+colnames(perf.spec) <- c("Score", "Model", "Method")
+colnames(perf.PPV) <- c("Score", "Model", "Method")
+
+
+tradeoff.data <- data.frame(rbind(perf.sens, perf.spec, perf.PPV))
+
+# Run for violent and save plot
+ggplot(data = tradeoff.data) +
+  geom_bar(mapping = aes(x = Model, y = Score, fill = Method), 
+           position = "dodge", stat = "identity") +
+  ylim(c(0,1))+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))+
+  ggtitle("Model Metrics")
+```
+
+We built our assessment around the following performance metric equations:
+Sensitivity = TP/(TP + FN) Higher Sensitivity means fewer cases of good suggestions which are predicted as bad.
+Specificity = TN/(TN + FP) Higher specificity means fewer cases of bad suggestions which are predicted as good.
+Positive Predictive Value = TP/(TP + FP) Higher PPV represents an improved quality of prediction, with a higher percent of good suggestions predictions being correct.
+
+According to the histogram, the Addictive Logistic Model is much better. The model has the highest Positive Predictive Value. That means we have high accuracy when we predict a suggestion as a good one, and it avoids we still need to take a lot of effort to sort through bad suggestions after prediction. The model also has the lowest sensitivity and lowest Sensitivity. That means we may miss more good suggestions but we have fewer cases of misjudging bad suggestions. The latter is more important since it bothers us more when a bad suggestion is regarded as a good one.
+
+
+```{r}
+ggroc(list(LG = roc.glm, ALG = roc.gam, NB = roc.nb, LDA = roc.lda, QDA = roc.qda, KNN = roc.knn), ) + theme_light() + ggtitle("ROC Curves")
+
+```
+
+Comparing the ROC curves of each model, although most of our models perform similarly well, we can see the  Addictive Logistic Model has really good AUC. That means the model do well in classifying suggestions into good or bad.
+
+The Addictive Logistic Model is following:
+```{r}
+# Addictive Logistic Model
+summary(suggest.gam)
+
+# confusion matrix
+tab.gam
+```
+
+Our model has 0.9659 Accuracy in predicting suggestion within test set, we use `Responses`, `Views`, `Votes_Up`, and `Votes_Down`, and `Author_PostsPerDay` to predict if a suggestion is a good one, and all predictors are statistically significant.
+
+
+### Analysis
+
+#### ‘Age’ of the employee 
+
+```{r}
+summary(suggest.glm)
+```
+
+Compared to other variables, the ‘age’ of the employee seems to not be very important, while the ‘age’  still affects their ability to make a good suggestion.
+
+
+```{r}
+# plot density of Author_JoinDays
+ggplot(suggest.subset, aes(x = Author_JoinDays)) + geom_histogram(aes(y=..density..))
+
+# show how the probability of being a good suggestion varies with 'age'
+ggplot(suggest.subset, aes(x = Author_JoinDays, fill = factor(Recommended))) + geom_bar() 
+
+# show the performance of suggestions varies with 'age'
+qplot(data = suggest.subset, x = Author_JoinDays, y = Recommended)
+
+```
+
+From those plots, we can see employees whose 'age' are less than 250 have never gave a good suggestion, and longer-tenures employees gave either good suggestions or bad suggestions.
+
+```{r}
+mean <- (max(suggest.subset$Author_JoinDays) - min(suggest.subset$Author_JoinDays)) / 2
+
+suggestions.longer <- suggest.subset[suggest.subset$Author_JoinDays >= mean ,]
+suggestions.shorter <- suggest.subset[suggest.subset$Author_JoinDays < mean ,]
+
+longer.true <- nrow(suggestions.longer[suggestions.longer$Recommended == "1" ,])
+longer.false <- nrow(suggestions.longer[suggestions.longer$Recommended == "0" ,])
+
+shorter.true <- nrow(suggestions.shorter[suggestions.shorter$Recommended == "1" ,])
+shorter.false <- nrow(suggestions.shorter[suggestions.shorter$Recommended == "0" ,])
+
+# count the recommended suggestions within longer-tenures employees 
+longer.true
+longer.false
+
+longer.rate <- longer.true / (longer.true + longer.false)
+longer.rate
+
+# count the recommended suggestions within shorter-tenures employees 
+shorter.true
+shorter.false
+
+shorter.rate <- shorter.true / (shorter.true + shorter.false)
+shorter.rate
+```
+
+We choose the median of the 'Author_JoinDays' to decide if a employee has a longer tenure. Then, comparing the rate of good suggestions between longer-tenures employee and shorter-tenures employee, we know that the employees with longer tenures making better suggestions than those with shorter ones.
+
+#### Rank employees
+
+```{r}
+employees <- aggregate(suggest$Suggestion_Id, by=list(suggest$Author_Id),length)
+hist(employees$x, xlab = "the number of suggestions", main = "Histogram")
+```
+
+From the plot, we can see in this data set most employees just gave suggestions less than 10 times, which means that it is unreasonable to rank these employees using their rate of good suggestions. The number of employees whose numbers of suggestions are more than 10 times is: 
+
+```{r}
+nrow(employees[employees$x >= 10,])
+```
+
+```{r cache = TRUE, warning=FALSE}
+employees.subset <- employees[employees$x >= 10,]
+stat <-  aggregate(suggest$Suggestion_Id, by=list(suggest$Author_Id, suggest$Recommended),length)
+stat.bad <- rep(308, 0)
+
+# calculate the number of bad suggestions for each employees
+for (i in 1:nrow(stat)) {
+  for (j in 1:nrow(employees.subset))
+  if (stat[i,]$Group.1 == employees.subset[j,]$Group.1) {
+    if (stat[i,]$Group.2 == 0) {
+       stat.bad[j] <- stat[i,]$x
+    }
+  }
+}
+
+```
+
+```{r}
+# calculate the rank
+rate <- stat.bad / employees.subset[,2] 
+rank <- rank(rate, ties.method = "min")
+
+# sort the rate 
+sort <- sort(rate)
+
+# create rank table
+table.rank <- cbind(employees.subset[,1], rank)
+
+# descending order of rank 
+table.rank <- table.rank[order(table.rank[,2]),]
+table.rank <- data.frame(table.rank)
+names(table.rank) <- c("Author_ID", "Rank")
+
+table.rank
+```
+
+According to the table above, we can rank 308 employees who have enough suggestion records. For those who have few suggestions, we put them into lowest rank. Next, we want to identify if suggestions from groups of employees could be aggregated to provide more reliable suggestions than made by the best individuals.
+
+```{r}
+# split employees into 100 groups by their 'ages'
+suggest$joinDays.group <- cut_number(suggest$Author_JoinDays, n = 100)
+group <- sort(suggest$joinDays.group[!duplicated(suggest$joinDays.group)])
+
+# calculate the rate of good suggestions within each group
+group.sum <- aggregate(suggest$Suggestion_Id, by=list(suggest$joinDays.group),length)
+group.stat <- aggregate(suggest$Recommended, by=list(suggest$joinDays.group),sum)
+group.rate <- group.stat$x / group.sum$x
+
+# plot the rate of each group
+plot(group, group.rate)
+```
+
+From the plot, we can see the rate of good suggestions for each group, all of rates are relatively small.
+
+```{r}
+# find the group with the highest rate 
+group[which.max(group.rate)]
+
+# compare the max group rate with best individuals
+# for 10 best individuals
+1 - sort[1:10]
+
+# for best group
+max(group.rate)
+
+```
+
+We group all employees by their 'age', and then compare the rate of good suggestions between these groups and 10 best individuals. We find that it is the groups of employees do not perform better than the best individuals. 
+
+
+### Conclusion and further work 
+
+We would recommend the IT department to focus more on certain types of employees or posts when they collect this data. For example, they could leverage more on the suggestions made by employee group which have been with the company from 1180 to 1260 days since they have higher change of making better suggestions. Besides, they could set bonus system to encourage more employees to post on their forum, especially for people who just joined the company. Employee survey can be conducted as well.
+
+Other attributes that may be useful include different topics/categories that these posts belong to, e.g. daily operation, administration and etc. This information will help us better understand what the employees care most about. 
+
+From our opinion, it is not impossible to build an automated suggestion ranking system. But how to measure if this system functions well would be something not easy, since suggestions varies a lot and probably change over time, and humans(management) may think strategically different than an automated machine. Therefore, it may be hard to achieve this automated ranking system. 
+
+
+### Our takeaway form this project 
+
+This project provides an comprehensive practice from what we learnt from this course. We think model and variable selection are very important in building up good models. Having the domain knowledge will help our analysis. 
+
+
+### Reference 
+
+1. https://canvas.cmu.edu/courses/29098/files/8114219?module_item_id=5143803&fd_cookie_set=1

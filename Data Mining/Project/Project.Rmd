@@ -1,0 +1,178 @@
+---
+title: "Lab 5 Solutions"
+author: "Your Name Here"
+date: ""
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    theme: cerulean
+    highlight: tango
+---
+
+
+```{r package_load}
+library(ggplot2) 
+library(ISLR) 
+library(plyr)
+library(knitr)   
+library(splines)
+library(MASS)  
+library(gam)
+library(gbm) 
+library(lattice)
+library(MASS)
+library(caret)
+# Load data
+suggestions <- read.csv("suggestions.csv", header = TRUE)
+names(suggestions) <- c("Recommended", "Suggestion_Id", "Responses", "Views", "Votes_Up", "Votes_Down", "Author_Id", "Author_Join", "Author_TotalPosts", "Author_PostsPerDay")
+varinfo <- c("Responses", "Views", "Votes_Up", "Votes_Down","Author_Join", "Author_PostsPerDay")
+  
+# histogram(suggestions$Recommended)
+# View(suggestions)
+```
+
+
+### 1. Changing the author field and file name.
+
+
+##### (a) Rank employees.  
+
+```{r}
+predictors <- c( "Responses", "Views", "Votes_Up", "Votes_Down", "Author_Join", "Author_TotalPosts", "Author_PostsPerDay")
+# Source: https://www.andrew.cmu.edu/user/achoulde/94842/lectures/lecture08/lecture08-94842.html#collinearity-and-pairs-plots
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...)
+{
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = pmax(1, cex.cor * r))
+}
+pairs(suggestions[, predictors], lower.panel = panel.cor)
+```
+
+
+##### (a) Determine good combination of attributes of the suggestion
+```{r}
+glm.fit <- glm(Recommended ~ Views + Votes_Up + Votes_Down + Author_Join + Author_PostsPerDay, data = suggestions, family = "binomial")
+summary(glm.fit)
+
+probabilities <- predict(glm.fit, newdata=suggestions, type="response")
+pred <- ifelse(probabilities > 0.5, 1, 0)
+
+
+# tab.gam <-table(Predicted = pred, Actual = suggestions$Recommended)
+tab.glm <- confusionMatrix(as.factor(pred), as.factor(suggestions$Recommended), positive =  "1")
+tab.glm
+
+# ggplot(data = suggestions, aes(x = probabilities)) + geom_histogram(bins = 30)
+
+
+
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+
+</font>
+
+```{r}
+gam.fit <- gam(Recommended ~  s(Views, 4) + s(Votes_Up, 4) + s(Votes_Down, 4) + s(Author_Join, 4) + s(Author_PostsPerDay, 4), data = suggestions)
+par(mfrow=c(3,2))
+plot(gam.fit, col="ForestGreen")
+
+prob.gam <- predict(gam.fit, newdata=suggestions, type="response")
+pred.gam <- ifelse(prob.gam > 0.5, 1, 0)
+# confusion matrix
+tab.glm <- confusionMatrix(as.factor(pred.gam), as.factor(suggestions$Recommended), positive =  "1")
+tab.glm
+
+```
+
+##### (a) Rank employees.  
+
+```{r}
+iris.lda <- lda(Recommended ~  Views + Votes_Up + Votes_Down + Author_Join + Author_PostsPerDay, data=suggestions)
+iris.lda
+
+```
+
+##### (b) Compare the significance between number of views and votes
+```{r}
+glm.fit2 <- glm(Recommended ~ Author_Join, data = suggestions, family = "binomial")
+summary(glm.fit2)
+
+ggplot(suggestions, aes(x = Author_Join)) + geom_histogram(aes(y=..density..))
+
+ggplot(suggestions, aes(x = Author_Join, fill = factor(Recommended))) + geom_bar() + labs(title="Age Breakdown  ")
+
+
+qplot(data = suggestions, x = Author_Join, y = Recommended)
+mean <- (max(suggestions$Author_Join) - min(suggestions$Author_Join)) / 2
+
+suggestions.longer <- suggestions[suggestions$Author_Join >= mean ,]
+suggestions.shorter <- suggestions[suggestions$Author_Join < mean ,]
+
+longer.true <- nrow(suggestions.longer[suggestions.longer$Recommended == "1" ,])
+longer.false <- nrow(suggestions.longer[suggestions.longer$Recommended == "0" ,])
+
+shorter.true <- nrow(suggestions.shorter[suggestions.shorter$Recommended == "1" ,])
+shorter.false <- nrow(suggestions.shorter[suggestions.shorter$Recommended == "0" ,])
+
+# count the recommended suggestions within longer-tenures employees 
+longer.true
+longer.false
+
+longer.rate <- longer.true / (longer.true + longer.false)
+longer.rate
+
+# count the recommended suggestions within shorter-tenures employees 
+shorter.true
+shorter.false
+
+shorter.rate <- shorter.true / (shorter.true + shorter.false)
+shorter.rate
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+
+</font>
+
+
+
+### 3. Random forests and Boosting
+
+##### (a) Rank employees.  
+
+```{r}
+stat <- aggregate(suggestions$Suggestion_Id, by=list(suggestions$Author_Id),length)
+hist(stat$x)
+nrow(stat[stat$x >= 10,])
+
+stat <- stat[stat$x >= 10,]
+  
+stat2 <- aggregate(suggestions$Suggestion_Id, by=list(suggestions$Author_Id, suggestions$Recommended),length)
+stat2 <- stat2[stat2$Group.1 == stat$Group.1,]
+
+rate <- stat2[,3] / stat[,2]
+rank(rate, ties.method = "min")
+```
+
+##### (a) Rank employees.  
+
+```{r}
+
+```
+
+##### (a) Rank employees.  
+
+```{r}
+
+```
+

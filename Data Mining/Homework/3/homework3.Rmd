@@ -1,0 +1,376 @@
+---
+title: "Homework 3: Variable selection in Regression"
+author: "Qinzhi Peng"
+date: 'Assigned: March 28, 2022'
+output: 
+  html_document:
+    toc: true
+    toc_depth: 5
+    theme: paper
+    highlight: tango
+---
+
+##### This homework is due by **11:59 pm EST on Monday, April 4**.  
+
+##### To complete this assignment, follow these steps:
+
+1. Download the `homework3.Rmd` file from Canvas or the course website.
+
+2. Open `homework3.Rmd` in RStudio.
+
+3. Replace the "Your Name Here" text in the `author:` field with your own name.
+
+4. Supply your solutions to the homework by editing `homework3.Rmd`.
+
+5. When you have completed the homework and have **checked** that your code both runs in the Console and knits correctly when you click `Knit HTML`, rename the R Markdown file to `homework3_YourNameHere.Rmd`, and submit both the `.Rmd` file and the `.html` output file on Canvas  (YourNameHere should be changed to your own name.)
+
+### Preamble: Loading packages and data
+
+**DO NOT CHANGE ANYTHING ABOUT THIS CODE!**
+
+```{r}
+library(ggplot2)
+library(ISLR)
+library(glmnet)
+library(leaps)  # needed for regsubsets
+library(boot)   # needed for cv.glm
+
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+options(scipen = 4)
+
+# Online news share count data
+set.seed(4218971)
+online.news <- read.csv("http://www.andrew.cmu.edu/user/achoulde/95791/data/online_news.csv")
+# subsample the data to reduce data size
+num.noise <- 50
+news <- data.frame(online.news, 
+                   matrix(rnorm(num.noise * nrow(online.news)), 
+                            nrow = nrow(online.news))
+                   )
+# Extract covariates matrix (for lasso)
+news.x <- as.matrix(news[, -which(names(news) == "shares")])
+# Extract response variable (for lasso)
+news.y <- news$shares
+```
+
+### Data dictionary
+
+If you want to learn more about this data set, you can have a look at the data dictionary provided here: [Data dictionary for news share data](http://www.andrew.cmu.edu/user/achoulde/95791/data/OnlineNewsPopularity.names.txt).
+
+### Problem 1
+
+> This question walks you through a comparison of three variable selection procedures we discussed in class.  
+
+##### **(a)** Use the `glm` command to fit a linear regression of `shares` on all the other variables in the `news` data set.  Print the names of the predictors whose coefficient estimates are statistically significant at the 0.01 level.  Are any of the "noise" predictors statistically significant? (Recall that "noise" predictors all have variable names of the form X#.)
+
+```{r}
+# Edit me
+glm.fit <- glm(shares ~ ., data = news)
+coef <- coef(summary(glm.fit))[, "Pr(>|t|)"]
+names(coef[coef < 0.01])
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+Yes.There is a "noise" predictor statistically significant, which is "X28".
+
+</font>
+
+
+**Hint:** To access the P-value column of a fitted model named `my.fit`, you'll want to look at the `coef(summary(my.fit))` object.  If you are new to R, you may find [the following section of the 94-842 note](http://www.andrew.cmu.edu/user/achoulde/94842/lectures/lecture08/lecture08-94842.html#exploring-the-lm-object) helpful.  
+
+##### **(b)** Use the `cv.glm` command with 10-fold cross-validation to estimate the test error of the model you fit in part (a).  Repeat with number of folds `K = 8, 12, 15, 30, 40, 60` (use a loop).  
+
+##### Calculate the standard deviation of your CV estimates divided by the mean of the estimates.  This quantity is called the [coefficient of variation](https://en.wikipedia.org/wiki/Coefficient_of_variation).  Do the error estimates change much across the different choices of $K$?
+
+```{r, cache = TRUE, warning=FALSE}
+# Edit me
+set.seed(1)
+folds <- c(10, 8, 12, 15, 30, 40, 60)
+cv.error <- rep(0, 7)
+for (i in 1:7) {
+  cv.error[i] <- cv.glm(news, glm.fit, K = folds[i])$delta[1]
+}
+cv.error
+
+cv <- sd(cv.error) / mean(cv.error)
+cv
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+The error estimates not change much across the different choices of $K$, since the coefficient of variation is very low.
+</font>
+
+**Note**: This loop may take a few minutes to run.  I have supplied the argument cache = TRUE in the header to prevent the code from needing to re-execute every time you knit.  This code chunk will re-execute only if the code it contains gets changed.  
+
+##### **(c)** The code below produces estimates of test error using the validation set approach.  Run this code 40 times (put the code in a loop).  Calculate the standard deviation of the estimates divided by the mean of the estimates.  Are the answers you get more or less variable than your answers from part **(b)**?
+
+```{r, cache = TRUE, warnings = FALSE}
+####
+## Modify the code below as necessary to answer the question.
+####
+mse <- rep(0, 40)
+  
+for (i in 1:40) {
+  # Form a random split
+  rand.split <- sample(cut(1:nrow(news), breaks = 2, labels = FALSE))
+  # Fit model on first part
+  news.glm.train <- glm(shares ~ ., data = news[rand.split == 1,])
+  # Predict on the second part
+  news.glm.pred <- predict(news.glm.train, newdata = news[rand.split == 2, ])
+  # Calculate MSE on the second part
+  mse[i] <- mean((news$shares[rand.split == 2] - news.glm.pred)^2)
+}
+
+cv <- sd(mse) / mean(mse)
+cv
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+I get more variable answer than the answer from part **(b)**
+</font>
+
+### Best subset selection
+
+##### **(d)**  The code below performs Best Subset Selection to identify which variables in the model are most important.  We only go up to models of size 5, because beyond that the computation time starts to get excessive. 
+
+##### Which variables are included in the best model of each size?  (You will want to work with the `summary(news.subset)` or `coef(news.subset, id = )` object to determine this.)  Are the models all nested?  That is, does the best model of size k-1 always a subset of the best model of size k?  Do any "noise predictors" appear in any of the models?
+
+```{r}
+set.seed(12310)
+# Get a smaller subset of the data to work with
+# Use this ONLY for problem (d).
+news.small <- news[sample(nrow(news), 2000), ]
+```
+
+```{r, cache = TRUE}
+# Best subset selection
+news.subset <- regsubsets(shares ~ .,
+               data = news.small,
+               nbest = 1,    # 1 best model for each number of predictors
+               nvmax = 5,    # NULL for no limit on number of variables
+               method = "exhaustive", really.big = TRUE)
+
+# Add code below to answer the question
+coef(news.subset, id = 1:5)
+
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+The best model of size 1 includes `kw_avg_avg`; The best model of size 2 includes `kw_avg_avg`, and `kw_avg_avg`; The best model of size 4 includes `kw_avg_avg`, `kw_avg_avg`, and `self_reference_max_shares`;The best model of size 4 includes `kw_avg_avg`, `kw_avg_avg`, `self_reference_max_shares`, and `title_subjectivity`;The best model of size 5 includes `kw_avg_avg`, `kw_avg_avg`, `self_reference_max_shares`, `title_subjectivity`, and `X23`.
+
+The models are all nested, and a "noise predictors" appears the model of size 5.
+</font> 
+
+### Forward Stepwise Selection
+
+##### **(e)**  Modify the code provided in part (d) to perform Forward stepwise selection instead of exhaustive search.  There should be no limit on the maximum size of subset to consider.  
+
+**NOTE:  You will need to swap out `news.small` for the full `news` data.  You should not use `news.small` for anything other than part (d)**
+
+```{r}
+# Edit me
+regfit.fwd <- regsubsets(shares ~ .,
+               data = news.small,
+               nbest = 1,    
+               nvmax = NULL,    
+               method = "forward", really.big = TRUE)
+```
+
+> Note: Parts (f) - (k) all refer to the results produced by Forward stepwise selection.  
+
+##### **(f)** For models of size 1:12, display the variables that appear in each model.  Are the models all nested?  Do any "noise predictors" appear in any of the models?
+
+```{r}
+# Edit me
+regfit.fwd2 <- regsubsets(shares ~ .,
+               data = news.small,
+               nbest = 1,    
+               nvmax = 12,    
+               method = "forward", really.big = TRUE)
+coef(regfit.fwd2, id = 1:12)
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+The models are all nested. "Noise predictors" appear in the models when size are larger than 4.
+</font>
+
+##### **(g)** When you run `summary()` on a regsubsets object you get a bunch of useful values.  Construct a plot showing R-squared on the y-axis and model size on the x-axis.  Use appropriate axis labels.  Does R-squared always increase as we increase the model size?  Explain.
+
+```{r}
+# Edit me
+reg.summary <- summary(regfit.fwd)
+plot(reg.summary$rsq,xlab="Model Size",ylab="R-squared",type="l")
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+R-squared always increases as we increase the model size. According to the formula of R-squared, when we add a new variable into the model, if the estimated coefficient takes a zero value, the SSE and the R square will stay unchanged; if the estimated coefficient takes a nonzero value,  the SSE will decrease and R square will increase.
+</font>
+
+##### **(h)**  Construct a plot showing Residual sum of squares on the y-axis and model size on the x-axis.  Does the RSS always decrease as we increase the model size?  Explain.
+
+```{r}
+# Edit me
+plot(reg.summary$rss,xlab="Model Size",ylab="RSS",type="l")
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+The RSS always decreases as we increase the model size. The explanation is same as part h. According to the formula of RSS, Whenever we add a new variable into the model, the SSE will always stay unchanged or decrease.
+</font>
+
+##### **(i)** [2 points] Construct a plot showing AIC (aka Mallows Cp) on the y-axis and model size on the x-axis.  Is the curve monotonic?  Explain.  What model size minimizes AIC?  How many "noise predictors" get included in this model?
+
+```{r}
+# Edit me
+plot(reg.summary$cp,xlab="Model Size",ylab="AIC",type='l')
+which.min(reg.summary$cp)
+names(coef(regfit.fwd, 23))
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+The curve monotonic is not monotonic. The AIC decreases as we add more variables initially, and then AIC increases when the model becomes much more complex. The reason is that AIC criteria has a penalty factor, which will minimize the trade-off between model error and model complexity. 23 model size minimizes AIC. There are 8 "noise predictors" included in this model.
+</font>
+
+##### **(j)** Construct a plot showing BIC on the y-axis and model size on the x-axis.  Is the curve monotonic?  Explain.  What model size minimizes BIC?  How many "noise predictors" get included in this model?
+
+```{r}
+# Edit me
+plot(reg.summary$bic,xlab="Model Size",ylab="BIC",type='l')
+which.min(reg.summary$bic)
+names(coef(regfit.fwd, 2))
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+The curve is not monotonic.The BIC also has a penalty factor, just like the AIC. But in this data set, the BIC penalty factor is larger than the AIC, which means BIC will choose a simpler model. 2 model size minimizes BIC. There are no  "noise predictors" included in this model.
+</font>
+
+##### **(k)** [2 points]  Compare the models selected by AIC and BIC.  Is one a subset of the other?  Which criterion selects the smaller model?  Does that criterion always result in a smaller model, or is does this happen just by coincidence on the `news` data?  Explain.
+
+<font color="#157515">
+
+- **Your answer here.**
+The model selected by BIC is one a subset of the model selected by AIC. The BIC selects the smaller model. According to the formulas of AIC and BIC, when the number of sample points is equal or larger than 8, the BIC penalty factor will be larger than the AIC, which means the BIC will select a smaller model. For the `news` data, we have lots of sample points, thus the BIC selects a smaller model.
+</font>
+
+### Lasso
+
+> For the Lasso problems below, you may find it helpful to review the code examples in the [Linear regression with glmnet](https://web.stanford.edu/~hastie/glmnet/glmnet_alpha.html#lin) vignette.  Running the glmnet command `glmnet(x = X, y = y)` where `y` is your response vector and `X` is your covariates matrix will fit a Lasso.  
+
+##### **(l)** Variables `news.x` and `news.y` were pre-constructed in the preamble to this assignment.  Use the `glmnet` command to fit a Lasso to this data.  Call the result `news.lasso`.  
+
+```{r}
+# Edit me
+news.lasso <- glmnet(news.x, news.y)
+news.lasso
+```
+
+##### **(m)** It turns out that `news.lasso` contains model fits for an entire sequence of $\lambda$ values.  Look at the `news.lasso$lambda` attribute.  How many $\lambda$ values do we have model fits for?
+
+```{r}
+# Edit me
+news.lasso$lambda
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+We have 98 $\lambda$ values.
+</font>
+
+##### **(n)** The `coef(news.lasso, s = )` will print out the estimated coefficients for our model at any lambda value `s`.  Display the coefficient estimates for the 20th value of $\lambda$ from part (l).  How many coefficients in this model are non-zero?  How many of the non-zero coefficients come from "noise predictors"?
+
+```{r}
+# Edit me
+lasso.coef <- coef(news.lasso)[,20]
+lasso.coef
+
+length(lasso.coef[lasso.coef != 0])
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+10 coefficients in this model are non-zero. There are no non-zero coefficients coming from "noise predictors".
+</font>
+
+##### **(o)**  Run the `plot` command on your `news.lasso` object to get a regularization plot.  Review the help file for `plot.glmnet` to figure out how to set "norm" as the x-axis variable option, and how to add labels to the curves.  In this parameterization of the x-axis, is the model fit getting more complex or less complex as the x-axis variable increases?
+
+```{r}
+# Edit me
+plot(news.lasso, xvar="norm", label = TRUE)
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+The model fit is getting more complex as the x-axis variable increases.
+</font>
+
+##### **(p)** `cv.glmnet(x, y)` will perform 10-fold cross-validation on the entire sequence of models fit by `glmnet(x, y)`.  Use the `cv.glmnet` command to perform cross-validation.  Save the results in a variable called `news.lasso.cv`.  Run the `plot()` command to get a CV error plot. 
+
+```{r}
+# Edit me
+set.seed(1)
+news.lasso.cv <- cv.glmnet(news.x, news.y)
+plot(news.lasso.cv)
+```
+
+##### **(q)** Use the `news.lasso.cv` object to figure out the value of $\lambda$ that minimizes CV error.  Which value of $\lambda$ does the 1-SE rule tell us to use? How many non-zero variables are selected by the min-CV rule and the 1-SE rule?  What is the estimated CV error for both of these models?  How many "noise predictors" get included in each model?
+
+```{r}
+# Edit me
+bestlam = news.lasso.cv$lambda.min
+bestlam
+selam = news.lasso.cv$lambda.1se
+selam
+
+bestlam.coef <- coef(news.lasso.cv, s = "lambda.min")
+length(bestlam.coef[bestlam.coef != 0])
+
+selam.coef <- coef(news.lasso.cv, s = "lambda.1se")
+length(selam.coef[selam.coef != 0])
+
+news.lasso.cv$cvm[news.lasso.cv$lambda == news.lasso.cv$lambda.min]
+news.lasso.cv$cvm[news.lasso.cv$lambda == news.lasso.cv$lambda.1se]
+
+bestlam.coef
+selam.coef
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+When $\lambda$ = 41.07055, the model gives minimum CV error. Using the 1-SE rule, we choose the model with $\lambda$ = 1283.749. There are 53 non-zero variables are selected by the min-CV rule, and 1 non-zero variable is selected by the 1-SE rule. The estimated CV error for the min-CV rule model is 132698465, and the estimated CV error for the 1-SE rule model is 135168827. In the min-CV rule model, we have 21 "noise predictors", but in the 1-SE rule model, we have no "noise predictors".
+</font>
+
+##### **(r)**  How does the CV error of the lambda-min model compare to the 10-fold CV error of the linear model you fit in part (a)?  Does it look like a model with a small number of predictors does as good a job of predicting share count? 
+
+```{r}
+# Edit me
+news.lasso.cv$cvm[news.lasso.cv$lambda == news.lasso.cv$lambda.min]
+cv.error[1]
+```
+
+<font color="#157515">
+
+- **Your answer here.**
+The CV error of the lambda-min model is smaller than the 10-fold CV error of the linear model in part (a). It looks like a model with a small number of predictors does as good a job of predicting share count.
+</font>
