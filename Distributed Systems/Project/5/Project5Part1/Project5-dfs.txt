@@ -1,0 +1,220 @@
+// log in 
+ssh -l student159 heinz-jumbo.heinz.cmu.local
+
+Task0
+// copy java file from public to local
+cp /home/public/WordCount.java /home/student159/Project5/Part_1/Task0
+
+// copy words.txt to HDFS
+hadoop dfs -copyFromLocal /home/public/words.txt /user/student159/input
+
+// compile java file
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./home/student159/Project5/Part_1/Task0/wordcount_classes -d /home/student159/wordcount_classes WordCount.java
+
+// generate a jar file
+jar -cvf wordcount.jar -C  /home/student159/wordcount_classes  .
+
+// deploy the jar file and test it against /home/public/words.txt
+hadoop jar /home/student159/Project5/Part_1/Task0/wordcount.jar org.myorg.WordCount /user/student159/input/words.txt /user/student159/output/task0_output/
+
+// examine the outputs of the three reducers
+hadoop dfs -cat /user/student159/output/task0_output/part-r-00000
+hadoop dfs -cat /user/student159/output/task0_output/part-r-00001
+hadoop dfs -cat /user/student159/output/task0_output/part-r-00002
+
+// place the results in the output folder
+hadoop dfs -getmerge /user/student159/output /home/student159/Project5/Part_1/Task0/Task0Output/
+
+Task1
+// transfer java file from local machine to cluster
+scp /Users/pengqinzhi/Desktop/Distributed-Systems/Project/5/Project5Part1/src/org/myorg/LetterCounter.java student159@heinz-jumbo.heinz.cmu.local:/home/student159/Project5/Part_1/Task1
+
+// compile java file
+mkdir classes
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./home/student159/Project5/Part_1/Task1/classes -d /home/student159/Project5/Part_1/Task1/classes LetterCounter.java
+
+// generate a jar file
+jar -cvf lettercount.jar -C  /home/student159/Project5/Part_1/Task1/classes  .
+
+// deploy the jar file and test it against /home/public/words.txt
+hadoop jar /home/student159/Project5/Part_1/Task1/lettercount.jar org.myorg.LetterCounter /user/student159/input/words.txt /user/student159/output/task1_output
+
+// check
+hadoop dfs -ls /user/student159/output/task1_output
+
+//delete
+hadoop dfs -rmr /user/student159/output/task1_output
+rm -r Task1
+mkdir Task1
+
+// examine the outputs of the three reducers
+hadoop dfs -cat /user/student159/output/task1_output/part-r-00000
+hadoop dfs -cat /user/student159/output/task1_output/part-r-00001
+hadoop dfs -cat /user/student159/output/task1_output/part-r-00002
+
+// place the results in the output folder
+hadoop dfs -getmerge /user/student159/output/task1_output/ /home/student159/Project5/Part_1/Task1/Task1Output/
+
+// sort
+sort -k 2nr task1_output
+
+
+Task2
+// compile java file
+mkdir classes
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./home/student159/Project5/Part_1/Task2/classes -d /home/student159/Project5/Part_1/Task2/classes WordSearch.java
+
+// generate a jar file
+jar -cvf wordsearch.jar -C  /home/student159/Project5/Part_1/Task2/classes  .
+
+// deploy the jar file and test it against /home/public/words.txt
+hadoop dfs -rmr /user/student159/output/task2_output
+hadoop jar /home/student159/Project5/Part_1/Task2/wordsearch.jar org.myorg.WordSearch /user/student159/input/words.txt /user/student159/output/task2_output
+
+// examine the outputs of the three reducers
+hadoop dfs -cat /user/student159/output/task2_output/part-r-00000
+hadoop dfs -cat /user/student159/output/task2_output/part-r-00001
+hadoop dfs -cat /user/student159/output/task2_output/part-r-00002
+
+// place the results in the output folder
+hadoop dfs -getmerge /user/student159/output/task2_output/ /home/student159/Project5/Part_1/Task2/Task2Output/
+
+
+Task3
+// copy java file from public to local
+cp /home/public/MaxTemperature.java /home/student159/Project5/Part_1/Task3
+cp /home/public/MaxTemperatureMapper.java /home/student159/Project5/Part_1/Task3
+cp /home/public/MaxTemperatureReducer.java /home/student159/Project5/Part_1/Task3
+
+
+// copy combinedYears.txt to HDFS
+hadoop dfs -copyFromLocal /home/public/combinedYears.txt /user/student159/input
+
+// compile three Java classes using a library of Hadoop classes
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./temperature_classes -d temperature_classes MaxTemperatureMapper.java
+
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./temperature_classes -d temperature_classes MaxTemperatureReducer.java
+
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./temperature_classes -d temperature_classes MaxTemperature.java
+
+// create a new jar file
+jar -cvf temperature.jar -C  temperature_classes/  .
+
+// deploy the jar file and test it against the data set under /home/public/combinedYears.txt
+hadoop jar /home/student159/Project5/Part_1/Task3/temperature.jar edu.cmu.andrew.mm6.MaxTemperature /user/student159/input/combinedYears.txt /user/student159/output/task3_output
+
+// place the results in the output folder
+mkdir /home/student159/Project5/Part_1/Task3/Task3Output/
+hadoop dfs -getmerge /user/student159/output/task3_output/ /home/student159/Project5/Part_1/Task3/Task3Output/
+
+
+Task4
+// transfer a directory from local to cluster
+scp -r /Users/pengqinzhi/Desktop/Distributed-Systems/Project/5/Project5Part1/src/edu/cmu/andrew/student159 student159@heinz-jumbo.heinz.cmu.local:/home/student159/Project5/Part_1/Task4
+
+// ompile three Java classes using a library of Hadoop classes
+mkdir mintemperature_classes
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./mintemperature_classes -d mintemperature_classes MinTemperatureMapper.java
+
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./mintemperature_classes -d mintemperature_classes MinTemperatureReducer.java
+
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./mintemperature_classes -d mintemperature_classes MinTemperature.java
+
+// create a new jar file
+jar -cvf mintemperature.jar -C  mintemperature_classes/  .
+
+// deploy the jar file and test it against the data set under /home/public/combinedYears.txt
+hadoop dfs -rmr /user/student159/output/task4_output
+hadoop jar /home/student159/Project5/Part_1/Task4/mintemperature.jar edu.cmu.andrew.student159.MinTemperature /user/student159/input/combinedYears.txt /user/student159/output/task4_output
+
+// place the results in the output folder
+mkdir /home/student159/Project5/Part_1/Task4/Task4Output/
+hadoop dfs -getmerge /user/student159/output/task4_output/ /home/student159/Project5/Part_1/Task4/Task4Output/
+
+
+Task5
+// transfer
+scp /Users/pengqinzhi/Desktop/Distributed-Systems/Project/5/Project5Part1/src/edu/cmu/andrew/student159/RapesPlusRobberies.java student159@heinz-jumbo.heinz.cmu.local:/home/student159/Project5/Part_1/Task5
+
+// copy
+hadoop dfs -copyFromLocal /home/public/P1V.txt /user/student159/input
+
+// compile three Java classes using a library of Hadoop classes
+mkdir classes
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./classes -d classes RapesPlusRobberies.java
+
+// create a new jar file
+jar -cvf rapesplusrobberies.jar -C  classes/  .
+
+// deploy the jar file and test it against the data set under /home/public/P1V.txt
+hadoop dfs -rmr /user/student159/output/task5_output
+hadoop jar /home/student159/Project5/Part_1/Task5/rapesplusrobberies.jar edu.cmu.andrew.student159.RapesPlusRobberies /user/student159/input/P1V.txt /user/student159/output/task5_output
+
+// examine the outputs of the three reducers
+hadoop dfs -cat /user/student159/output/task5_output/part-r-00000
+hadoop dfs -cat /user/student159/output/task5_output/part-r-00001
+hadoop dfs -cat /user/student159/output/task5_output/part-r-00002
+
+// place the results in the output folder
+mkdir /home/student159/Project5/Part_1/Task5/Task5Output/
+hadoop dfs -getmerge /user/student159/output/task5_output/ /home/student159/Project5/Part_1/Task5/Task5Output/
+
+
+Task6
+// transfer
+scp /Users/pengqinzhi/Desktop/Distributed-Systems/Project/5/Project5Part1/src/edu/cmu/andrew/student159/OaklandCrimeStats.java student159@heinz-jumbo.heinz.cmu.local:/home/student159/Project5/Part_1/Task6
+
+// compile three Java classes using a library of Hadoop classes
+mkdir classes
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./classes -d classes OaklandCrimeStats.java
+
+// create a new jar file
+jar -cvf oaklandcrimestats.jar -C  classes/  .
+
+// deploy the jar file and test it against the data set under /home/public/P1V.txt
+hadoop dfs -rmr /user/student159/output/task6_output
+hadoop jar /home/student159/Project5/Part_1/Task6/oaklandcrimestats.jar edu.cmu.andrew.student159.OaklandCrimeStats /user/student159/input/P1V.txt /user/student159/output/task6_output
+
+// examine the outputs of the three reducers
+hadoop dfs -cat /user/student159/output/task6_output/part-r-00000
+hadoop dfs -cat /user/student159/output/task6_output/part-r-00001
+hadoop dfs -cat /user/student159/output/task6_output/part-r-00002
+
+// place the results in the output folder
+mkdir /home/student159/Project5/Part_1/Task6/Task6Output/
+hadoop dfs -getmerge /user/student159/output/task6_output/ /home/student159/Project5/Part_1/Task6/Task6Output/
+
+
+Task7
+// copy from public
+hadoop dfs -copyFromLocal /home/public/CrimeLatLonXYTabs.txt /user/student159/input
+
+
+// transfer file
+scp /Users/pengqinzhi/Desktop/Distributed-Systems/Project/5/Project5Part1/src/edu/cmu/andrew/student159/OaklandCrimeStatsKml.java student159@heinz-jumbo.heinz.cmu.local:/home/student159/Project5/Part_1/Task7
+
+// compile three Java classes using a library of Hadoop classes
+mkdir classes
+javac -classpath  /usr/local/hadoop/hadoop-core-1.2.1.jar:./classes -d classes OaklandCrimeStatsKml.java
+
+// create a new jar file
+jar -cvf oaklandcrimestatskml.jar -C  classes/  .
+
+// deploy the jar file and test it against the data set under CrimeLatLonXYTabs.txt
+hadoop dfs -rmr /user/student159/output/task7_output
+hadoop jar /home/student159/Project5/Part_1/Task7/oaklandcrimestatskml.jar edu.cmu.andrew.student159.OaklandCrimeStatsKml /user/student159/input/CrimeLatLonXYTabs.txt /user/student159/output/task7_output
+
+// examine the outputs of the three reducers
+hadoop dfs -cat /user/student159/output/task7_output/part-r-00000
+hadoop dfs -cat /user/student159/output/task7_output/part-r-00001
+hadoop dfs -cat /user/student159/output/task7_output/part-r-00002
+
+// place the results in the output folder
+mkdir /home/student159/Project5/Part_1/Task7/Task7Output/
+hadoop dfs -getmerge /user/student159/output/task7_output/ /home/student159/Project5/Part_1/Task7/Task7Output/
+
+// retrieve the output
+scp student159@heinz-jumbo.heinz.cmu.local:/home/student159/Project5/Part_1/Task7/Task7Output/task7_output /Users/pengqinzhi/Desktop
+
+
+
