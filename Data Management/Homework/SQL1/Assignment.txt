@@ -1,0 +1,76 @@
+CREATE TABLE store_reps
+(rep_ID NUMBER(5),
+last VARCHAR2(15),
+first VARCHAR2(10),
+comm CHAR(1) DEFAULT 'Y',
+CONSTRAINT store_reps_pk PRIMARY KEY (rep_ID));
+
+ALTER TABLE store_reps
+MODIFY
+(first CONSTRAINT store_reps_first_nn NOT NULL);
+
+ALTER TABLE store_reps
+MODIFY
+(last CONSTRAINT store_reps_last_nn NOT NULL);
+
+ALTER TABLE store_reps
+MODIFY
+(comm CONSTRAINT store_reps_comn_ck CHECK (comm IN ('Y', 'N')));
+
+ALTER TABLE store_reps
+ADD (Base_salary NUMBER(7,2)
+CONSTRAINT store_reps_Base_salary_ck CHECK (Base_salary > 0));
+
+SELECT customer# || ':  ' || lastname AS "Customer", state AS "ST"
+FROM customers
+WHERE state = 'GA' or state = 'J'
+ORDER BY lastname;
+
+SELECT customer# || ':  ' || lastname AS "Customer", state AS "ST"
+FROM customers
+WHERE state = 'GA' or state = 'J'
+ORDER BY lastname ASC;
+
+SELECT Lname AS "Last Name", Fname AS "First Name"
+FROM author
+WHERE Lname LIKE '%IN%'
+ORDER BY Lname, Fname;
+
+SELECT title AS "Title", pubdate AS "Publish Date"
+FROM books
+WHERE (pubdate BETWEEN '01-JAN-05' AND '31-DEC-05') AND (category = 'COMPUTER');
+
+SELECT title AS "Title", pubdate AS "Publish Date"
+FROM books
+WHERE (pubdate >= '01-JAN-05' AND pubdate <= '31-DEC-05') AND (category = 'COMPUTER');
+
+SELECT title AS "Title", pubdate AS "Publish Date"
+FROM books
+WHERE pubdate LIKE '%-05' AND category = 'COMPUTER';
+
+
+SELECT order#  AS "Order#", firstname || ' ' || lastname AS "Customer"
+FROM customers c, orders o
+WHERE c.customer# = o.customer#
+AND shipdate IS NULL
+ORDER BY o.orderdate;
+
+SELECT DISTINCT c.firstname || ' ' || c.lastname AS "Customer", b.title AS "Title"
+FROM customers c, orders o, orderitems oi, books b
+WHERE (c.customer# = o.customer# 
+AND o.order# = oi.order#
+AND oi.isbn = b.isbn)
+AND (c.firstname || ' ' || c.lastname = 'JAKE LUCAS');
+
+SELECT DISTINCT c.firstname || ' ' || c.lastname AS "Customer", b.title AS "Title", o.orderdate AS "Order Date", (oi.paideach-b.cost) AS "Profit"
+FROM customers c, orders o, orderitems oi, books b
+WHERE (c.customer# = o.customer# 
+AND o.order# = oi.order#
+AND oi.isbn = b.isbn)
+AND (c.firstname || ' ' || c.lastname = 'JAKE LUCAS')
+ORDER BY (oi.paideach-b.cost) DESC, orderdate;
+
+SELECT p.gift AS "Gift"
+FROM books, promotion p
+WHERE retail BETWEEN minretail AND maxretail 
+AND title = 'SHORTEST POEMS';

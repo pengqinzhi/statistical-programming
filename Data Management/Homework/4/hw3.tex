@@ -1,0 +1,97 @@
+
+\documentclass[letterpaper,12pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{times}
+\usepackage{mathptmx}
+\usepackage{amsmath}
+
+
+
+\begin{document}
+1. $\pi\,_{\text{Instr\_FName, Instr\_LName, Instr\_Phone }}$ (INSTUCTOR $\bowtie$ CLASS $\bowtie$ TRAINING) \\
+
+2. $\pi\,_{\text{Emp\_ID, Emp\_FName, Emp\_LName}}$ ($\sigma\,_{\text{Grade $=$ `R' AND (Sem\_Compltd\ $=$ `Spr 2020' OR Sem\_Compltd\ $=$ `Fall 2020')}}$ 
+
+
+(EMPLOYEE $\bowtie$ TRAINING)) \\
+
+
+3. $\pi\,_{\text{Emp\_ID, Emp\_FName, Emp\_LName}}$ ($\sigma\,_{\text{Crs\_Title $=$ `Database Mangagement' AND Grade $!=$ `R'}}$ 
+
+
+((EMPLOYEE $\bowtie$ TRAINING) $\bowtie$ COURSE))  \\
+
+4. $\pi\,_{\text{Emp\_ID, Emp\_FName, Emp\_LName}}$ 
+
+($\sigma\,_{\text{(Grade $=$ `A+' OR Grade $=$ `A' OR Grade $=$ `A-')\ AND\ (Sem\_Compltd $=$ `Spr 2020' OR Sem\_Compltd $=$ `Fall 2020')}}$ 
+
+
+(EMPLOYEE $\bowtie$ TRAINING) 
+
+
+$-$
+
+
+$ \pi\,_{\text{Emp\_ID, Emp\_FName, Emp\_LName}}$ ($\sigma\,_{\text{Grade $=$ `R'}}$\ (EMPLOYEE $\bowtie$ TRAINING)) \\
+
+
+5. $\pi\,_{\text{Instr\_ID, Instr\_FName, Instr\_LNeme}}$
+
+
+($\sigma\,_{\text{Crs\_Title\ = `Internet Marketing'}}$ ((INSTRUCTOR $\bowtie$ CLASS) $\bowtie$ COURSE))
+
+
+$-$
+
+
+$\pi\,_{\text{Instr\_ID, Instr\_FName, Instr\_LNeme}}$
+
+
+($\sigma\,_{\text{Crs\_Title $=$ `Marketing'}}$ ((INSTRUCTOR $\bowtie$ CLASS) $\bowtie$ COURSE))  \\
+
+6. $\pi\,_{\text{Emp\_ID, Emp\_FName, Emp\_LName, Crs\_Title, College\_Name}}$ 
+
+
+(EMPLOYEE \quad 
+
+
+$\pi\,_{\text{Emp\_ID, Crs\_Title, College\_Name}}$ ($\sigma\,_{\text{Sem\_Cmpltd $=$ `Spr 2020' OR Sem\_Cmpltd\ $=$ `Fall 2020'}}$ (COURSE $\bowtie$ TRAINING))) \\
+
+7. $\pi\,_{\text{Crs\_ID, Crs\_Title, College\_Name}}$ (COURSE) 
+
+
+$-$
+
+
+$\pi\,_{\text{Crs\_ID, Crs\_Title, College\_Name}}$ ((COURSE $\bowtie$ TRAINING) \\
+
+8. $\pi\,_{\text{Emp\_ID, Emp\_FName, Emp\_LNaame, Crs\_Title, College\_Name}}$ ((COURSE $\bowtie$ TRAINING) $\bowtie$ EMPLOYEE)
+
+
+$\div$
+
+
+$\pi\,_{\text{College\_Name}}$ (COURSE) \\
+
+9. $\pi\,_{\text{Crs\_ID, Crs\_Title, Crs\_Type, Emp\_ID}}$ ($\sigma\,_{\text{Sem\_Cmpltd\ $=$ `Fall 2020'}}$ (COURSE $\bowtie$ TRAINING) 
+
+
+$\bowtie$ 
+
+
+$\pi\,_{\text{$\rm E_{1}$.Sup\_ID}}$ ($\sigma\,_{\text{$\rm E_{1}$.Emp\_ID $=$ $\rm E_{2}$.Emp\_ID AND $\rm E_{2}$.Emp\_FName $=$ `Bill' AND $\rm E_{2}$.Emp\_LName $=$ `Getz'}}$
+
+
+($\rho_{\rm E_{1}}$(EMPOLYEE) $\times$ $\rho_{\rm E_{2}}$(EMPOLYEE))) \\
+
+10. $\pi\,_{\text{$\rm E_{1}$.Emp\_ID, $\rm E_{1}$.Emp\_FName, $\rm E_{1}$.Emp\_LName, $\rm E_{2}$.Emp\_ID, $\rm E_{2}$.Emp\_FName, $\rm E_{2}$.Emp\_LName, $\rm E_{1}$.Crs\_Title, $\rm E_{1}$.Sem\_Cmpltd}}$
+
+
+($\sigma\,_{\text{$\rm E_{1}$.Crs\_ID $=$ $\rm E_{2}$.Crs\_ID AND $\rm E_{1}$.Sem\_Cmpltd $=$ $\rm E_{2}$.Sem\_Cmpltd AND $\rm E_{1}$.Crs\_ID $<$ $\rm E_{2}$.Crs\_ID}}$
+
+
+($\rho_{\rm E_{1}}$((EMPOLYEE $\bowtie$ TRAINING) $\bowtie$ COURSE) $\times$ $\rho_{\rm E_{2}}$((EMPOLYEE $\bowtie$ TRAINING) $\bowtie$ COURSE)))
+
+
+\end{document}
