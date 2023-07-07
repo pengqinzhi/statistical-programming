@@ -1,0 +1,150 @@
+-- #1
+COLUMN Employee FORMAT A30
+COLUMN Times FORMAT A5
+COLUMN Earliest_Date FORMAT A15
+SELECT e.emp_num ||': '|| e.fname ||' '|| e.lname AS "Employee", s.name AS "Skill",
+    COUNT(t.train_num) AS "# of Training", MIN(t.date_acquired) AS "Earliest_Date",
+    TRUNC(MONTHS_BETWEEN(SYSDATE, MAX(t.date_acquired))) AS "# of Passed_Month"
+FROM employee e, training t, skill s
+WHERE e.emp_num = t.emp_num
+AND t.code = s.code
+GROUP BY e.emp_num, e.fname, e.lname, s.name
+ORDER BY e.emp_num;
+
+-- #3
+COLUMN start_date FORMAT A10
+COLUMN Proj_Start FORMAT A10
+COLUMN Month FORMAT A10
+SELECT a.proj_number || ': ' || p.name AS "Project", p.start_date AS "Proj_Start", 
+    TO_CHAR(TO_DATE(EXTRACT(MONTH FROM Date_Assigned),'MM'), 'MONTH') AS "Month",
+    COUNT(DISTINCT a.emp_num) AS "# of Employees", SUM(a.hours_used) AS "Total_Hours"
+FROM project p, assignment a
+WHERE p.proj_number = a.proj_number
+AND p.total_cost IS NULL
+GROUP BY a.proj_number, p.name, p.start_date, a.date_assigned
+UNION ALL
+SELECT a.proj_number || ': ' || p.name AS "Project", p.start_date, 'TOTAL:', COUNT(DISTINCT a.emp_num), SUM(a.hours_used)
+FROM project p, assignment a
+WHERE p.proj_number = a.proj_number
+AND p.total_cost IS NULL
+GROUP BY a.proj_number, p.name, p.start_date;
+
+-- #5
+COLUMN date_acquired FORMAT A15
+SELECT e.emp_num ||': '|| e.fname ||' '|| e.lname AS "Employee", e.hire_date,
+    t.name AS "Training_Name", t.date_acquired, t.date_acquired - e.hire_date AS "Days of Training", 
+    COUNT(DISTINCT a.proj_number) AS "#Porject"
+FROM employee e
+LEFT JOIN training t
+ON e.emp_num = t.emp_num
+LEFT JOIN assignment a
+ON e.emp_num = a.emp_num
+WHERE e.hire_date >= TO_DATE('2021-04-01','yyyy-mm-dd')
+AND e.hire_date <= TO_DATE('2021-06-30','yyyy-mm-dd')
+GROUP BY  e.emp_num, e.fname, e.lname, e.hire_date, t.name, t.date_acquired
+ORDER BY e.emp_num;
+
+-- #7
+COLUMN Quarter FORMAT A10
+SELECT TO_CHAR(p.start_date,'Q') quarter, COUNT(DISTINCT p.proj_number) AS "# of Project",
+COUNT(DISTINCT a.emp_num)  AS "# of Employee", SUM(a.hours_used) / COUNT(DISTINCT p.proj_number) AVG_Hours
+FROM project p, assignment a
+WHERE p.proj_number = a.proj_number
+AND TO_CHAR(p.start_date,'YYYY') = '2021' 
+GROUP BY TO_CHAR(p.start_date,'YYYY') ,TO_CHAR(p.start_date,'Q')
+ORDER BY TO_CHAR(p.start_date,'YYYY') ,TO_CHAR(p.start_date,'Q');
+
+-- #9
+SELECT d.name AS "Department", s.name AS "Skill", NVL(count, 0) AS "#training", 
+RANK() OVER (PARTITION BY d.name ORDER BY count DESC NULLS LAST) rank
+FROM department d
+CROSS JOIN skill s
+LEFT JOIN
+(SELECT d.name dep_name, s.name skill_name, COUNT(t.train_num) count
+FROM skill s
+JOIN training t
+ON s.code = t.code
+JOIN employee e
+ON t.emp_num = e.emp_num
+JOIN department d
+ON e.dept_code = d.dept_code
+GROUP BY d.name, s.name)
+ON s.name = skill_name
+AND d.name = dep_name;
+
+-- #11
+COLUMN Employee FORMAT A20
+SELECT e.emp_num ||': '|| e.lname AS "Employee", e.hire_date,
+    CASE 
+    WHEN e.super_id IS NULL THEN 'ALL'
+    ELSE d.name 
+    END AS "Managed_Dept", 
+    s.supervising AS "#Supervising"
+FROM employee e
+LEFT JOIN department d
+ON e.dept_code = d.dept_code
+LEFT JOIN 
+(SELECT super_id, count(*) supervising
+FROM employee
+WHERE super_id is NOT NULL
+GROUP BY super_id) s
+ON e.emp_num = s.super_id
+WHERE rownum <= 4
+ORDER BY e.hire_date;
+
+-- #13
+COLUMN employee FORMAT A30
+COLUMN last_project FORMAT A15 
+SELECT employee, department, proj_number ||' '|| proj_name AS "Last_Project"
+FROM
+(SELECT e.emp_num ||': '|| e.fname ||' '|| e.lname employee, d.name department, 
+    p.proj_number, p.start_date, p.name proj_name,
+    ROW_NUMBER() OVER (PARTITION BY e.emp_num ORDER BY p.start_date DESC) rn
+FROM employee e
+LEFT JOIN assignment a
+ON e.emp_num = a.emp_num
+LEFT JOIN project p
+ON p.proj_number = a.proj_number
+JOIN department d 
+ON e.dept_code = d.dept_code
+WHERE e.emp_num NOT IN 
+(SELECT a.emp_num
+FROM project p, assignment a
+WHERE p.proj_number = a.proj_number
+AND p.start_date >= TO_DATE('2021-08-01','yyyy-mm-dd'))
+GROUP BY e.emp_num, e.fname, e.lname, d.name, p.proj_number, p.start_date, p.name
+ORDER BY d.name, e.lname)
+WHERE rn = 1;
+
+-- #15
+SET LINESIZE 300
+COLUMN table_name FORMAT A15 
+COLUMN column_name FORMAT A15 
+COLUMN constraint_name FORMAT A30 
+COLUMN FK_references FORMAT A30
+BREAK ON table_name
+
+SELECT t.table_name, t.column_name, cc.constraint_name, 
+    Case c.constraint_type
+        WHEN 'P' THEN 'PK'
+        WHEN 'R' THEN 'FK'
+        WHEN 'C' THEN 'CK'
+        WHEN 'U' THEN 'UK'
+        ELSE c.constraint_type
+        END, 
+    c.search_condition, c_pk.table_name ||' '|| c_pk.column_name  AS "FK_references"
+FROM user_tab_columns t
+LEFT JOIN 
+(SELECT table_name, column_name, constraint_name
+FROM user_cons_columns) cc
+ON t.column_name = cc.column_name
+AND t.table_name = cc.table_name
+LEFT JOIN user_constraints c
+ON cc.constraint_name = c.constraint_name
+LEFT JOIN 
+(SELECT a.table_name, b.column_name, a.constraint_name
+FROM user_constraints a, user_cons_columns b
+WHERE a.constraint_name = b.constraint_name) c_pk
+ON c.r_constraint_name = c_pk.constraint_name
+ORDER BY t.table_name, t.column_name;
+

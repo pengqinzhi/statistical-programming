@@ -1,0 +1,211 @@
+
+Employee                       Skill                Times Earliest_Date   #Passed_Month
+------------------------------ -------------------- ----- --------------- -------------
+1002    : Georgi Facello       JAVA                     1 23-JUN-21                   5
+1004    : Parto Bamford        Writing                  1 01-JUL-21                   4
+1008    : Anneke Preusig       JAVA                     1 23-JUN-21                   5
+1008    : Anneke Preusig       Writing                  1 11-JUL-21                   4
+1009    : Tzvetan Zielinski    Advertising              1 11-SEP-21                   2
+1009    : Tzvetan Zielinski    Writing                  1 01-JUL-21                   4
+1010    : Saniya Peac          Writing                  3 01-JUL-21                   1
+
+7 rows selected. 
+
+
+     LEVEL Employee                                 Dept_Name           
+---------- ---------------------------------------- --------------------
+         1 1001        Duangkaew Piveteau           Marketing           
+         2    1002        Georgi Facello            Marketing           
+         3       1005        Georgi Facello         Marketing           
+         3       1008        Anneke Preusig         Marketing           
+         2    1003        Bezalel Simmel            Finance             
+         3       1006        Chirstian Koblick      Finance             
+         3       1009        Tzvetan Zielinski      Finance             
+         2    1004        Parto Bamford             Human Resources     
+         3       1007        Kyoichi Maliniak       Human Resources     
+         3       1010        Saniya Peac            Human Resources     
+
+10 rows selected. 
+
+
+Project                    Proj_Start Month  #Employees SUM(A.HOURS_USED)
+-------------------------- ---------- ------ ---------- -----------------
+0001: Big Husky            01-OCT-21  10              1                70
+0001: Big Husky            01-OCT-21  12              1                  
+0001: Big Husky            01-OCT-21                  1                70
+
+
+Table EMPLOYEE altered.
+
+
+10 rows updated.
+
+
+EMP_NUM  LNAME           FNAME                DOB       HIRE_DATE SUPER_ID DE  BONUS_AMT
+-------- --------------- -------------------- --------- --------- -------- -- ----------
+1001     Piveteau        Duangkaew            02-NOV-63 12-JAN-96          01          0
+1002     Facello         Georgi               02-SEP-73 26-JUN-06 1001     01          0
+1003     Simmel          Bezalel              02-JUN-74 21-NOV-05 1001     02          0
+1004     Bamford         Parto                03-DEC-79 28-AUG-06 1001     03          0
+1005     Facello         Georgi               01-MAY-84 01-DEC-17 1002     01          0
+1006     Koblick         Chirstian            21-JAN-85 02-JUN-19 1003     02          0
+1007     Maliniak        Kyoichi              20-APR-83 01-MAY-21 1004     03          0
+1008     Preusig         Anneke               02-SEP-83 16-MAY-21 1002     01          0
+1009     Zielinski       Tzvetan              12-OCT-88 02-MAY-21 1003     02        200
+1010     Peac            Saniya               01-JUN-93 22-MAY-21 1004     03          0
+
+10 rows selected. 
+
+
+Employee                                 HIRE_DATE Training_Name                  DATE_ACQUIRED   Days of Training   #Porject
+---------------------------------------- --------- ------------------------------ --------------- ---------------- ----------
+1007    : Kyoichi Maliniak               01-MAY-21                                                                          1
+1008    : Anneke Preusig                 16-MAY-21 Computer Skills Training       23-JUN-21                     38          0
+                                                   Professional Training          11-JUL-21                     56          0
+1009    : Tzvetan Zielinski              02-MAY-21 Marketing Training             11-SEP-21                    132          2
+                                                   Professional Training          01-JUL-21                     60          2
+1010    : Saniya Peac                    22-MAY-21 Professional Training          01-JUL-21                     40          0
+                                                   Professional Training          02-JUL-21                     41          0
+                                                   Professional Training          21-OCT-21                    152          0
+
+8 rows selected. 
+
+
+NAME                 START_DATE Status   
+-------------------- ---------- ---------
+Big Husky            01-OCT-21  on-going 
+Big Tech Stuff       01-AUG-21  completed
+Long Term Restore    01-JAN-21  completed
+Long Term Restore    01-JAN-21  completed
+Long Term Restore    01-JAN-21  completed
+Long Term Restore    01-JAN-21  completed
+Long Term Restore    01-JAN-21  completed
+Long Term Restore    01-JAN-21  completed
+Long Term Restore    01-JAN-21  completed
+Long Term Restore    01-JAN-21  completed
+Long Term Restore    01-JAN-21  completed
+Long Term Restore    01-JAN-21  completed
+
+12 rows selected. 
+
+
+QUARTER      #Project  #Employee  AVG_HOURS
+---------- ---------- ---------- ----------
+1                   1          1        420
+2                   1          4        415
+3                   2          5        280
+4                   1          1         70
+
+
+ID       Employee Name                                   JAVA Latest Date Acquir ADVERTISING Latest Date Acquir    WRITING Latest Date Acquir Number of Skills                        
+-------- ----------------------------------------- ---------- ------------------ ----------- ------------------ ---------- ------------------ ----------------------------------------
+1002     Georgi Facello                                     1 23-JUN-21                    0 ------                      0 ------             1                                       
+1004     Parto Bamford                                      0 ------                       0 ------                      1 01-JUL-21          1                                       
+1008     Anneke Preusig                                     1 23-JUN-21                    0 ------                      1 11-JUL-21          2                                       
+1009     Tzvetan Zielinski                                  0 ------                       1 11-SEP-21                   1 01-JUL-21          2                                       
+1010     Saniya Peac                                        0 ------                       0 ------                      3 21-OCT-21          3                                       
+---      Number of Trainings:                               2 ------                       1 ------                      6 ------             ------                                  
+
+6 rows selected. 
+
+
+Department           Skill                 #training       RANK
+-------------------- -------------------- ---------- ----------
+Finance              Writing                       1          1
+Finance              Advertising                   1          1
+Finance              JAVA                          0          3
+Human Resources      Writing                       4          1
+Human Resources      JAVA                          0          2
+Human Resources      Advertising                   0          2
+Marketing            JAVA                          2          1
+Marketing            Writing                       1          2
+Marketing            Advertising                   0          3
+
+9 rows selected. 
+
+
+PROJ NAME                 TOT_DAYS_WORKED
+---- -------------------- ---------------
+0003 Allosaurus                       180
+0005 Long Term Restore                175
+
+
+Employee                                 HIRE_DATE Managed_Dept         #supervising
+---------------------------------------- --------- -------------------- ------------
+Piveteau                                 12-JAN-96 Marketing                       3
+Simmel                                   21-NOV-05 Finance                         2
+Facello                                  26-JUN-06 Marketing                       2
+Bamford                                  28-AUG-06 Human Resources                 2
+
+
+TYPE        Project Count Client Count
+----------- ------------- ------------
+Educational             1            0
+For-Profit              3            5
+Other                   1            0
+Government              0            0
+Non-Profit              0            0
+
+
+EMPLOYEE                                 DEPARTMENT           Last_Project   
+---------------------------------------- -------------------- ---------------
+1003    : Bezalel Simmel                 Finance              0003           
+1009    : Tzvetan Zielinski              Finance              0002           
+1004    : Parto Bamford                  Human Resources      0003           
+1007    : Kyoichi Maliniak               Human Resources      0002           
+1010    : Saniya Peac                    Human Resources                     
+1005    : Georgi Facello                 Marketing            0003           
+1001    : Duangkaew Piveteau             Marketing                           
+1008    : Anneke Preusig                 Marketing                           
+
+8 rows selected. 
+
+
+Skill Name           # of Projects requiring skill # of Employee trainings
+-------------------- ----------------------------- -----------------------
+JAVA                                             1                       2
+Writing                                          3                       6
+Advertising                                      1                       1
+Totals:                                          5                       9
+
+
+TABLE_NAME      COLUMN_NAME     CONSTRAINT_NAME                CA SEARCH_CONDITION                         FK_references                 
+--------------- --------------- ------------------------------ -- ---------------------------------------- ------------------------------
+ASSIGNMENT      ASSIGN_NUM      ASSIGNMENT_ASSIGN_NUM_PK       PK                                                                        
+                PROJ_NUMBER     ASSIGNMENT_PROJ_NUMBER_FK      FK                                          PROJECT:PROJ_NUMBER           
+                EMP_NUM         ASSIGNMENT_EMP_NUM_FK          FK                                          EMPLOYEE:EMP_NUM              
+                DATE_ASSIGNED   ASSIGNMENT_DATE_ENDED_1_M_CK   CK EXTRACT(MONTH FROM Date_Ended) - EXTRACT                               
+                                                                  (MONTH FROM Date_Assigned) <= 1                                        
+
+                DATE_ENDED      ASSIGNMENT_DATE_ENDED_1_M_CK   CK EXTRACT(MONTH FROM Date_Ended) - EXTRACT                               
+                                                                  (MONTH FROM Date_Assigned) <= 1                                        
+
+                DATE_ASSIGNED   ASSIGNMENT_DATE_ENDED_CK       CK Date_Ended > Date_Assigned                                             
+                DATE_ENDED      ASSIGNMENT_DATE_ENDED_CK       CK Date_Ended > Date_Assigned                                             
+CLIENT          CLIENT_ID       CLIENT_CLIENT_ID_PK            PK                                                                        
+                WEB_ADDRESS     CLIENT_WEB_ADDRESS_UK          UK                                                                        
+                NAME            CLIENT_NAME_NN                 NN "NAME" IS NOT NULL                                                     
+                CONTACT_LNAME   CLIENT_CONTACT_LNAME_NN        NN "CONTACT_LNAME" IS NOT NULL                                            
+                CONTACT_FNAME   CLIENT_CONTACT_FNAME_NN        NN "CONTACT_FNAME" IS NOT NULL                                            
+DEPARTMENT      DEPT_CODE       DEPARTMENT_DEPT_CODE_PK        PK                                                                        
+                LOCATION        DEPARTMENT_LOCATION_NN         NN "LOCATION" IS NOT NULL                                                 
+                NAME            DEPARTMENT_NAME_NN             NN "NAME" IS NOT NULL                                                     
+EMPLOYEE        DEPT_CODE       EMPLOYEE_DEPT_CODE_FK          FK                                          DEPARTMENT:DEPT_CODE          
+                SUPER_ID        EMPLOYEE_SUPER_ID_FK           FK                                          EMPLOYEE:EMP_NUM              
+                EMP_NUM         EMPLOYEE_EMP_NUM_PK            PK                                                                        
+                FNAME           EMPLOYEE_FNAME_NN              NN "FNAME" IS NOT NULL                                                    
+                LNAME           EMPLOYEE_LNAME_NN              NN "LNAME" IS NOT NULL                                                    
+PROJECT         PROJ_NUMBER     PROJECT_PROJ_NUMBER_PK         PK                                                                        
+                DEPT_CODE       PROJECT_DEPT_CODE_FK           FK                                          DEPARTMENT:DEPT_CODE          
+                CLIENT_ID       PROJECT_CLIENT_ID_FK           FK                                          CLIENT:CLIENT_ID              
+                CODE            PROJECT_CODE_FK                FK                                          SKILL:CODE                    
+                CODE            PROJECT_CODE_NN                NN "CODE" IS NOT NULL                                                     
+SKILL           NAME            SKILL_NAME_UK                  UK                                                                        
+                CODE            SKILL_CODE_PK                  PK                                                                        
+                NAME            SKILL_NAME_NN                  NN "NAME" IS NOT NULL                                                     
+TRAINING        TRAIN_NUM       TRAINING_TRAIN_NUM_PK          PK                                                                        
+                CODE            TRAINING_CODE_FK               FK                                          SKILL:CODE                    
+                EMP_NUM         TRAINING_EMP_NUM_FK            FK                                          EMPLOYEE:EMP_NUM              
+
+31 rows selected. 
+

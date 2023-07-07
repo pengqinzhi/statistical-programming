@@ -1,0 +1,59 @@
+THESE CONSTRAINTS NEED TO BE ADDED!
+
+EMPLOYEE:
+	* Employed by 1 department
+	* 1 employee from that department is manager
+	* Employee can supervise and be supervised
+	* CEO Supervies top-level employee of each department
+		- The employee in a department who is supervised by CEO is top-level
+
+
+CLIENT:
+	* Current clients(have projects) and potential clients(no projects) are kept 
+
+PROJECT:
+	* Each project belongs to only 1 department
+	* Administration dept. does not run any projects
+	* Start date and total cost recorded
+	* Total cost is only recorded after project is complete
+		- A WIP project will have total cost = NULL
+	* Requires 1 SKILL(fk = Code)
+	
+
+ASSIGNMENT: 
+	* Each assignment can have several employees(many employees working on single project)
+	* New Employees are not assigned to project until after a few months
+	* Assignments are recorded on month by month basis
+		- So the same project #123, can have 2 different assignments if it took 2 months to complete
+	* Each row in assignment could be something like this
+		| assignment#1 | proj#1 | emp#1 | date_assigned | date_ended(end of month) | total hours in month|
+		| assignment#1 | proj#1 | emp#2 | date_assigned | date_ended(end of month) | total hours in month|
+
+	So for each month of an  assignment; every employee assigned to that asssignment will have a row with dates and # of hours
+	* IF assignment is WIP, BOTH end date and # hours == NULL 
+
+
+SKILLS:
+	* List of desired skills is kept
+	* Not all of the skills will be represented among employees
+		- Maybe no employee has the skills "breadmaking"
+	* Employees acquire skills through TRAINING
+
+
+
+TRAINING:
+	* Contains FK "Code" referencing the SKILL code that the employee(EMP_NUM) acquired through the training session(TRAIN_NUM)
+	* Date the training was completed AKA skill acquired is recorded
+	* Comment regarding the training is recorded
+	* Employee can take same training more than once --- the record will be UPDATED
+	
+
+
+
+
+Datatypes:
+
+CHAR(n)
+VARCHAR2(n)
+NUMBER(p, s)
+DATE
