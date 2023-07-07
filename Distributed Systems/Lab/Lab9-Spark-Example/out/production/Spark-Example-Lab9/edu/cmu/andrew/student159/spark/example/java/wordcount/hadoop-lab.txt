@@ -1,0 +1,61 @@
+Open IntelliJ and select JDK 1.8 for the compiler.
+Create a command line Java project in IntelliJ.
+Name the project Spark-Example-Lab9.
+Right click the project and do the following to install the Spark library. Open Module Settings/Libraries/+/From Maven Enter org.apache.spark:spark-core_2.10:1.0.0
+
+OK/Apply/OK
+
+In the src directory, create a Java class named WordCounter.java in the package edu.cmu.andrew.userID.spark.example.java.wordcount.
+
+Copy the code below into WordCounter.java.
+
+package edu.cmu.andrew.userID.spark.example.java.wordcount;
+
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import scala.Tuple2;
+
+import java.util.Arrays;
+
+public class WordCounter {
+
+    private static void wordCount(String fileName) {
+
+        SparkConf sparkConf = new SparkConf().setMaster("local").setAppName("JD Word Counter");
+
+        JavaSparkContext sparkContext = new JavaSparkContext(sparkConf);
+
+        JavaRDD<String> inputFile = sparkContext.textFile(fileName);
+
+        JavaRDD<String> wordsFromFile = inputFile.flatMap(content -> Arrays.asList(content.split(" ")));
+
+        JavaPairRDD countData = wordsFromFile.mapToPair(t -> new Tuple2(t, 1)).reduceByKey((x, y) -> (int) x + (int) y);
+
+        countData.saveAsTextFile("CountData");
+    }
+
+    public static void main(String[] args) {
+
+        if (args.length == 0) {
+            System.out.println("No files provided.");
+            System.exit(0);
+        }
+
+        wordCount(args[0]);
+    }
+}
+We need to specify a file name as a command line parameter. Select the project node. From the Run menu, select Edit Configurations.
+
+The main class is: edu.cmu.andrew.mm6.spark.example.java.wordcount.WordCounter
+
+Set the command line argument to the name of this file: hadoop-lab.txt and set the working directory to the directory holding hadoop-lab.txt.
+
+Compile and run the Java application.
+
+The output file will be in a directory named CountData in your working directory.
+
+If you get a "file already exists exception", be sure to delete the output directory named "CountData" in your working directory.
+
+If you receive strange errors, it may be the case that JDK 1.8 is required. JDK 8 needs to be downloaded and selected when you first run IntelliJ.
