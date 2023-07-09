@@ -1,0 +1,305 @@
+---
+title: "Lab 5 Solutions"
+author: "Your Name Here"
+date: ""
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    theme: cerulean
+    highlight: tango
+---
+
+
+```{r package_load}
+library(ggplot2) # graphics library
+library(ISLR)    # contains code and data from the textbook
+library(knitr)   # contains knitting control
+library(tree)    # For the tree-fitting 'tree' function
+library(MASS)    # For Boston data
+library(randomForest) # For random forests and bagging
+library(gbm)  # For boosting
+
+options(scipen = 4)  # Suppresses scientific notation
+```
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=10, fig.height=6, fig.path='Figs/',
+                      warning=FALSE, message=FALSE)
+```
+
+### 1. Changing the author field and file name.
+
+##### (a) Change the `author:` field on the Rmd document from Your Name Here to your own name.
+
+##### (b) Rename this file to "lab05_YourHameHere.Rmd", where YourNameHere is changed to your own name.
+
+<hr>
+
+> The next portion of the lab gets you to carry out the Lab exercises in &sect;8.3.2, 8.3.3, 10.5.1, 10.5.2 of ISL.  You will want to have the textbook Lab open in front you as you go through these exercises.  The ISLR Lab provides much more context and explanation for what you're doing.  
+
+
+
+### 2. Random forests and Boosting
+
+> You will need the `Carseats` data set from the `ISLR` library in order to complete this exercise.
+
+> Please run all of the code indicated in &sect;8.3.3-8.3.4 of ISLR, even if I don't explicitly ask you to do so in this document.
+
+##### (a) Run the `View()` command on the `Carseats` data to see what the data set looks like.  
+
+```{r}
+#View(Carseats)
+```
+
+##### The following code construst the `High` variable for the purpose of classification.  Our goal will be to classify whether Carseat sales in a store are high or not.  
+
+
+```{r}
+High <- with(Carseats, ifelse(Sales <= 8, "No", "Yes"))
+Carseats <- data.frame(Carseats, High)
+
+# Split into training and testing
+set.seed(2)
+train <- sample(1:nrow(Carseats), 200)
+Carseats.test <- Carseats[-train,]
+High.test <- High[-train]
+```
+
+##### By setting `mtry = p` in the randomForest command, we can use the randomForest function to fit a bagged tree model.  Here's what we get.
+
+```{r}
+# Define training set
+set.seed(1)
+train <- sample(1:nrow(Boston), nrow(Boston)/2)
+boston.test <- Boston$medv[-train]
+
+set.seed(1)
+bag.boston <- randomForest(medv ~ .,data=Boston, subset=train, mtry=13, importance=TRUE)
+bag.boston
+```
+
+##### (a) As always, we can use the `plot` command on a fitted model object to get some kind of plot of the model.  This plot shows the Out-of-bag MSE on the y-axis.  What is the plot showing on the x-axis?
+
+```{r}
+plot(bag.boston)
+```
+
+- This plot is showing the Out-of-bag MSE curve as a function of the number of trees (the number of bootstrapped samples).  We can see that we hit a plateau around 300 trees:  the error doesn't seem to decrease much beyond that point.
+
+##### (b) Now let's try fitting an actual random forest.  The default setting is to take `mtry = p/3` for regression and `mtry = sqrt(p)` for classification.  Try fitting a random forest to the training data using `mtry = 6`.  Call your fit `rf.boston`.  Calculate its test set MSE.  
+
+```{r}
+rf.boston <- randomForest(medv~., data=Boston, subset=train, mtry=6, importance=TRUE)
+
+# MSE
+yhat.rf = predict(rf.boston,newdata=Boston[-train,])
+mean((yhat.rf-boston.test)^2)
+```
+
+##### (c) Run `importance` and `varImpPlot` on your random forest fit. How many plots are produced by the `varImpPlot` command?  What are these plots showing?
+
+```{r}
+importance(rf.boston)
+varImpPlot(rf.boston)
+```
+
+- There are two plots produced by the `varImpPlot` command.  Here are the details for what these plots are showing:
+
+>The first measure is computed from permuting OOB data: For each tree, the prediction error on the out-of-bag portion of the data is recorded (error rate for classification, MSE for regression). Then the same is done after permuting each predictor variable. The difference between the two are then averaged over all trees, and normalized by the standard deviation of the differences. If the standard deviation of the differences is equal to 0 for a variable, the division is not done (but the average is almost always equal to 0 in that case).
+
+>The second measure is the total decrease in node impurities from splitting on the variable, averaged over all trees. For classification, the node impurity is measured by the Gini index. For regression, it is measured by residual sum of squares.
+
+##### (d) Use the `partialPlot` command to get partial dependence plots for the 2 most important variables according to the %IncMSE importance.  Describe what you see.
+
+```{r}
+partialPlot(rf.boston, Boston, x.var = "lstat")
+partialPlot(rf.boston, Boston, x.var = "rm")
+```
+
+##### (e)  Using the `gbm` function, apply boosting with `5000` trees, allowing for trees up to depth `4`.  Fit to just the training data.  You'll need to specify `distribution = "gaussian"`.  Call your object `boost.boston`, and run the `summary()` command on it.
+
+```{r}
+set.seed(1)
+boost.boston=gbm(medv~., data=Boston[train,], distribution="gaussian",
+                 n.trees=5000, interaction.depth=4)
+summary(boost.boston)
+```
+
+**Note**: The `summary()` command will produce a plot of each variable's *relative influence*.  This should be interpreted just like the 2nd importance measure for random forests:  It's the decrease in error from splitting on the variable, averaged over all the trees.  
+
+##### (f)  Use the `plot` command to get partial dependence plots for `rm` and `lstat`.  How do these compare to the partial dependence plots from the random forest fit?
+
+```{r}
+par(mfrow=c(1,2))
+plot(boost.boston,i="rm")
+plot(boost.boston,i="lstat")
+```
+
+##### (g) Use your boosted model to predict outcomes for the testing data.  Calculate the MSE.  How does it compare to random forests?
+
+```{r}
+yhat.boost=predict(boost.boston,newdata=Boston[-train,],n.trees=5000)
+mean((yhat.boost-boston.test)^2)
+```
+
+##### (h)  Let's try increasing the learning rate.  The default value is `shrinkage = 0.001`.  What happens if we take `shrinkage = 0.2`?  Fit this model, keeping all other settings the same.  Calculate the test MSE.  Compare to the test MSE from the earlier model.
+
+```{r}
+boost.boston <- gbm(medv~.,data=Boston[train,],distribution="gaussian",n.trees=5000,interaction.depth=4,shrinkage=0.2,verbose=F)
+yhat.boost <- predict(boost.boston,newdata=Boston[-train,],n.trees=5000)
+mean((yhat.boost-boston.test)^2)
+```
+
+##### (i)  Let's try speeding up the learning even more.  Take `shrinkage = 0.7`.  Calculate test MSE, and compare to the previous two versions.
+
+```{r}
+boost.boston <- gbm(medv~.,data=Boston[train,],distribution="gaussian",n.trees=5000,interaction.depth=4,shrinkage=0.7,verbose=F)
+yhat.boost <- predict(boost.boston,newdata=Boston[-train,],n.trees=5000)
+mean((yhat.boost-boston.test)^2)
+```
+
+##### (j) `gbm` has built-in Cross-validation functionality.  Set the argument `cv.folds = 10` to perform cross-validation.  Call your object `boost.boston.cv`.  Use the default shrinkage settings.
+
+```{r, cache = TRUE}
+boost.boston.cv <- gbm(medv~.,data=Boston[train,],distribution="gaussian",n.trees=5000,interaction.depth=4,verbose=F, cv.folds = 10)
+```
+
+##### (k) `boost.boston.cv` now has an attribute called `cv.error`.  This attribute gives the 10-fold CV error for each tree size.  Plot the CV error against tree size. What number of trees gives the lowest CV error?  What is the minimum CV error achieved by boosting?
+
+```{r}
+qplot(1:5000, boost.boston.cv$cv.error, xlab = "Number of trees")
+# minimum error
+min(boost.boston.cv$cv.error)
+```
+
+- We see that that the CV error is strictly decreasing in the number of trees.  Interesting.
+
+##### (l) Repeat parts (j) and (k), this time with `shrinkage = 0.2`.  Comment on your findings.
+
+```{r, cache = TRUE}
+boost.boston.cv <- gbm(medv~.,data=Boston[train,],distribution="gaussian",n.trees=5000,interaction.depth=4,verbose=F, shrinkage = 0.2, cv.folds = 10)
+qplot(1:5000, boost.boston.cv$cv.error, xlab = "Number of trees")
+
+# Minimum CV error attained
+min(boost.boston.cv$cv.error)
+# Number of trees used in min CV model
+which.min(boost.boston.cv$cv.error)
+```
+
+### 3. K-means clustering (sect;10.5.1)
+
+> Here's the small data set that's generated in the book.  This is a very stylized example, but it's good enough for the purpose of introducing you to the basic clustering functions in R.
+
+```{r}
+set.seed(2)
+# generate data
+x <- matrix(rnorm(50*2), ncol=2)
+# shift the first 25 points to have mean (3, -4) instead of (0, 0)
+x[1:25, 1] <- x[1:25, 1] + 3
+x[1:25, 2] <- x[1:25, 2] - 4
+```
+
+##### (a) Plot the data in two dimensions.  Colour it based on the true class label. The first 25 observations are from one class, and the next 25 points are from another class.
+
+```{r}
+class.lbl <- as.factor(c(rep(1, 25), rep(2, 25)))
+qplot(x = x[,1], y = x[,2], colour = class.lbl, size = I(3)) + theme_bw()
+```
+
+##### (b) Use the `kmeans` command to cluster the data into 2 classes.  Specify `nstart = 10`.  What does the `nstart` parameter mean?
+
+```{r}
+km.out <- kmeans(x, 2, nstart=20)
+```
+
+##### (c)  Compare the clustering you get to the true class labels.  How well did we do?
+
+```{r}
+table(km.out$cluster, class.lbl)
+```
+
+- It looks like K-means reconstructed the original groups perfectly.
+
+##### (d)  Now try splitting the data into 3 clusters.  Plot your results.  Does this look like a reasonable partition?
+
+```{r}
+set.seed(4)
+km.out <- kmeans(x, 3, nstart=20)
+km.out
+plot(x, col=(km.out$cluster+1), main="K-Means Clustering Results with K=3", xlab="", ylab="", pch=20, cex=2)
+```
+
+##### (e)  Now try running K-means with 3 clusters and `nstart = 1`. Try it a bunch of times.  Do you always get the same answer?  
+
+```{r}
+set.seed(12)
+km.out <- kmeans(x, 3, nstart = 1)
+km.out
+plot(x, col=(km.out$cluster+1), main="K-Means Clustering Results with K=3", xlab="", ylab="", pch=20, cex=2)
+```
+
+-  The plot above shows a clustering that is different from the one we obtained in part (d).  We definitely don't always get the same clustering.  
+
+### 4. Hierarchical clustering
+
+> We're going to continue using the same simple dataset as in Problem 3.  But this time we're going to learn about the `hclust` command for hierarchical clustering.  
+
+##### (a) Use the `hclust` command with different choices of `method` to perform complete, average, and single linkage clustering of the data. Note that the `hclust` function requires a distance matrix as the first argument.  You will want to pass in `dist(x)`, not `x`, to the `hclust` command.
+
+```{r}
+hc.complete <- hclust(dist(x), method="complete")
+hc.average <- hclust(dist(x), method="average")
+hc.single <- hclust(dist(x), method="single")
+```
+
+##### (b)  Plot the dendrograms for all three clusterings.
+
+```{r}
+par(mfrow=c(1,3))
+plot(hc.complete,main="Complete Linkage", xlab="", sub="", cex=.9)
+plot(hc.average, main="Average Linkage", xlab="", sub="", cex=.9)
+plot(hc.single, main="Single Linkage", xlab="", sub="", cex=.9)
+```
+
+##### (c)  Cut all of the dendrograms taking `k = 2`.  You will notice from the documentation `?cutree` that you can cut a dendrogram either by specifying the number of clusters you want, or the height you wish to cut at.  Comment on the quality of the clusters.
+
+```{r}
+cutree(hc.complete, 2)
+cutree(hc.average, 2)
+cutree(hc.single, 2)
+```
+
+- Both Complete and Average linkage perform quite well on this problem.  Single linkage does quite horribly.  Single linkage winds up with one giant cluster containing 49 points, and one cluster containing just 1 point.
+
+##### (d) Construct plots for all 3 clusterings.  Colour the points according to which cluster they wound up with.  
+
+```{r}
+par(mfrow = c(1,3))
+plot(x, col=(cutree(hc.complete, 2)+1), main="Complete linkage clustering with K=2", xlab="", ylab="", pch=20, cex=2)
+plot(x, col=(cutree(hc.average, 2)+1), main="Average linkage clustering with K=2", xlab="", ylab="", pch=20, cex=2)
+plot(x, col=(cutree(hc.single, 2)+1), main="Single linkage clustering with K=2", xlab="", ylab="", pch=20, cex=2)
+```
+
+##### (d)  Does taking `k = 4` with single linkage do any better?  Plot your clustering.
+
+```{r}
+cutree(hc.single, 4)
+
+par(mfrow = c(1,2))
+plot(x, col=(cutree(hc.single, 2)+1), main="Single linkage clustering with K=2", xlab="", ylab="", pch=20, cex=2)
+plot(x, col=(cutree(hc.single, 4)+1), main="Single linkage clustering with K=4", xlab="", ylab="", pch=20, cex=2)
+```
+
+- With `k = 4`, Single linkage does a better job of recovering the original two classes.  Two of the 4 clusters have just one point each.  The other two clusters are essentially the two classes we originally started with.
+
+- **Note**:  Single linkage clustering commonly results in a mix of very small and very large clusters.  It is common to take Single Linkage clustering and follow it up with a pruning step, where all small clusters are discarded.  Single linkage can successfully capture irregularly shaped clusters in ways that the other linkages cannot.  So this single linkage + prune approach can sometimes be quite successful.
+
+##### (e)  Try out the code below.  Here we're getting 30 observations of 3 variables, and using correlation as a similarity measure to run complete linkage clustering.
+
+```{r}
+par(mfrow = c(1,1))
+x <- matrix(rnorm(30*3), ncol=3)
+dd <- as.dist(1-cor(t(x)))
+plot(hclust(dd, method="complete"), main="Complete Linkage with Correlation-Based Distance", xlab="", sub="")
+```

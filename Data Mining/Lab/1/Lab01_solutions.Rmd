@@ -1,0 +1,352 @@
+---
+title: "Lab 1"
+author: "Your Name Here"
+date: ""
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    theme: cerulean
+    highlight: tango
+---
+
+### 1. Changing the author field and file name.
+
+##### (a) Change the `author:` field on the Rmd document from Your Name Here to your own name.
+
+##### (b) Rename this file to "lab01_YourHameHere.Rmd", where YourNameHere is changed to your own name.
+
+### 2. Installing and loading packages
+
+Just like every other programming language you may be familiar with, R's capabilities can be greatly extended by installing additional "packages" and "libraries".
+
+To **install** a package, use the `install.packages()` command.  You'll want to run the following commands to get the necessary packages for today's lab:
+
+```
+install.packages("ggplot2")
+install.packages("MASS")
+install.packages("ISLR")
+install.packages("knitr")
+```
+
+You only need to install packages once.  Once they're installed, you may use them by **loading** the libraries using the `library()` command.  For today's lab, you'll want to run the following code
+
+```{r}
+library(ggplot2) # graphics library
+library(MASS)    # contains data sets, including Boston
+library(ISLR)    # contains code and data from the textbook
+library(knitr)   # contains kable() function
+
+options(scipen = 4)  # Suppresses scientific notation
+```
+
+### 3. Simple Linear Regression with the Boston Housing data.
+
+> This portion of the lab gets you to carry out the Lab in &sect;3.6 of ISLR (Pages 109 - 118).  You will want to have the textbook Lab open in front you as you go through these exercises.  The ISLR Lab provides much more context and explanation for what you're doing.  
+
+> Please run all of the code indicated in &sect;3.6 of ISLR, even if I don't explicitly ask you to do so in this document.
+
+**Note**: You may want to use the `View(Boston)` command instead of `fix(Boston)`.
+
+##### (a) Use the `dim()` command to figure out the number of rows and columns in the Boston housing data
+
+```{r}
+# View(Boston)
+dim(Boston)
+```
+
+##### (b) Use the `nrow()` and `ncol()` commands to figure out the number of rows and columns in the Boston housing data.  
+
+```{r}
+# Edit me
+nrow(Boston)
+ncol(Boston)
+```
+
+##### (c) Use the `names()` command to see which variables exist in the data.  Which of these variables is our response variable?  What does this response variable refer to?  How many input variables do we have?
+
+```{r}
+# Edit me
+names(Boston)
+```
+
+- The response variable is `medv`, which represents the median house value for various neighbourhoods in Boston.
+
+- There are a total of `r ncol(Boston)` columns in the data.  One of these is the response variable `medv`, which leaves `r ncol(Boston) - 1` "predictor" or "input" variables.
+
+##### (d) Use the `lm()` function to a fit linear regression of `medv` on `lstat`.  Save the output of your linear regression in a variable called `lm.fit`.
+
+```{r}
+# Edit me
+lm.fit <- lm(medv ~ lstat, data = Boston)
+```
+
+##### (e) Use the `summary()` command on your `lm.fit` object to get a print-out of your regression results
+
+```{r}
+# Edit me
+summary(lm.fit)
+```
+
+##### (f) Uncomment the line below to get a 'nice' printout of the coefficients table
+
+```{r}
+kable(coef(summary(lm.fit)), digits = c(4, 5, 2, 4))
+```
+
+##### (g)  Call `names()` on `lm.fit` to explore what values this linear model object contains.  
+
+```{r}
+names(lm.fit)
+```
+
+##### (h) Use the `coef()` function to get the estimated coefficients.  What is the estimated Intercept?  What is the coefficient of `lstat` in the model?  Interpret this coefficient.
+
+```{r}
+coef(lm.fit)
+coef(lm.fit)["(Intercept)"]
+coef(lm.fit)["lstat"]
+```
+
+- The intercept in the model is `r round(coef(lm.fit)["(Intercept)"], 1)`. 
+
+- The coefficient of `lstat` in the model is `r round(coef(lm.fit)["lstat"], 3)`.  This means that for each 1% increase in the % of low socioeconomic status individuals residing in the neighbourhood, median home values on average decrease by $`r abs(round(1000 * coef(lm.fit)["lstat"], 0))`.
+
+##### (i) Here's a ggplot command that overlays a linear regression line on a scatterplot of `mdev` vs. `lstat`.  Edit the `xlab` and `ylab` arguments to produce more meaningful axis labels.  Does the linear model appear to fit the data well?  Explain.
+
+```{r}
+qplot(data = Boston, x = lstat, y = medv,
+      xlab = "% of individuals of low socioeconomic status", ylab = "Median home value ($1000's)") + stat_smooth(method = "lm")
+```
+
+- The linear model appears to be a pretty good fit to the data in the `lstat` range of 10 - 25.  However, the overall relationship between median home value and the % of low socioeconomic status individuals in the neighbourhood appears to be overall non-linear.  
+
+- Here's a plot showing a local regression fit to the data.  The local regression model appears to do a better job of capturing the trends in the data.
+
+```{r}
+qplot(data = Boston, x = lstat, y = medv,
+      ylab = "Median home value ($1000's)",
+      xlab = "% of individuals of low socioeconomic status") +
+  stat_smooth(method = "loess")
+```
+
+##### (i) Follow the ISLR examples for getting confidence intervals and prediction intervals for the regression data.
+
+```{r}
+# Confidence intervals
+confint(lm.fit)
+```
+
+- Running `confint` on a regression model in the above way simply produces 95% confidence intervals for the parameters.  The above output gives us a 95% CI for the Intercept $\beta_0$ and for the coefficient of `lstat`.  
+
+<hr>
+
+```{r}
+predict(lm.fit, data.frame(lstat=c(5, 10, 15)), interval ="confidence")
+```
+
+- Here's a snippet from the documentation for the `predict.lm` command:
+
+```
+predict(object, newdata, se.fit = FALSE, scale = NULL, df = Inf,
+        interval = c("none", "confidence", "prediction"),
+        level = 0.95, type = c("response", "terms"),
+        terms = NULL, na.action = na.pass,
+        pred.var = res.var/weights, weights = 1, ...)
+```
+
+- The command we ran thus used the model `lm.fit` to produce *predicted values* and *confidence intervals for the expected value* of `medv` at the new data points `lstat = 5, 10, 15`.  These intervals match up exactly with the upper and lower endpoints of the shaded "confidence region" that you get as part of a linear model overlay.  It's a bit hard to see the values here because the confidence bands are so narrow:
+
+```{r}
+qplot(data = Boston, x = lstat, y = medv,
+      xlab = "% of individuals of low socioeconomic status", 
+      ylab = "Median home value ($1000's)") + 
+  stat_smooth(method = "lm") +
+  geom_vline(xintercept = c(5, 10, 15), lty = 2)
+```
+
+<hr>
+
+```{r}
+predict (lm.fit, data.frame(lstat=c(5, 10, 15)), interval = "prediction")
+```
+
+- Notice that the `interval` type is now `"prediction"`, not `"confidence"`.  *Prediction* intervals are confidence intervals for the actual value of $Y$, not just its mean or "expected value".  They are wider because they are trying to contain not just the average value of $Y$, but the actual value of $Y$.  
+
+- If you are not familiar with prediction intervals, there is some discussion on page 82 of **ISLR**.  You may also find it helpful to `Ctrl + F` the mentions of "predition interval" in ISLR, which will pop up a few other helpful hits.
+
+### 4. Multiple Linear Regression with the Boston Housing data
+
+##### (a) Use the command `?Boston` to figure out what the `age` variable means.  What does `age` mean in the Boston Housing data?
+
+- The `age` variable gives the proportion of homes in the neighbourhood built prior to 1940.
+
+##### (b) Following the example in part 3(i) of this lab, use the `qplot()` command to construct a scatterplot of `medv` veruses `age`.  Make sure to specify meaningful x and y axis names.  Overlay a linear regression line.  Does a linear relationship appear to hold between the two variables?
+
+```{r}
+qplot(data = Boston, x = age, y = medv, 
+       xlab = "Proportion of owner-occupied units built prior to 1940",
+       ylab = "Median home value ($1000's)") +
+  stat_smooth(method = "lm")
+```
+
+- The linear model seems OK here.  There is perhaps a 'dip' in the 90%+ range that the model doesn't capture, but this is difficult to see due to the skewed distribution of the `age` variable.
+
+
+##### (c) Use the `lm()` command to a fit a linear regression of `medv` on `lstat` and `age`.  Save your regression model in a variable called `lm.fit`.
+
+```{r}
+lm.fit <- lm(medv ~ lstat + age, data = Boston)
+```
+
+##### (d)  What is the coefficient of `age` in your model?  Interpret this coefficient.
+
+```{r}
+coef(lm.fit)["age"]
+```
+
+- This says that, holding `lstat` constant, every additional % increase in pre-1940 homes in a neighbourhood is associated with an average increase of $`r round(1000 *coef(lm.fit)["age"], 0)` in median home value.
+
+##### (e) Use `medv ~ .` syntax to fit a model regressing `medv` on all the other variables.  Use the `summary()` and `kable()` functions to produce a coefficients table in *nice* formatting.
+
+```{r}
+lm.fit <- lm(medv ~ ., data = Boston)
+kable(coef(summary(lm.fit)), digits = c(3, 3, 1, 4))
+```
+
+##### (f) Think about what the variables in the data set mean.  Do the signs of all of the coefficient estimates make sense?  Are there any that do not?  For the ones that do not, are the coefficients statistically significant (do they have p-value < 0.05)?
+
+```{r}
+# Variables with positive signs
+names(which(coef(lm.fit) > 0))
+
+# Variables with negative signs
+names(which(coef(lm.fit) < 0))
+```
+
+**Variables with positive coefficients:**
+
+- `zn :  proportion of residential land zoned for lots over 25,000 sq.ft.`  It makes sense that neighbourhoods with larger lots have higher home values
+- `indus : proportion of non-retail business acres per town.`  This term isn't statistically significant, so we shouldn't worry of this sign makes sense.
+- `chas : Charles River dummy variable (= 1 if tract bounds river; 0 otherwise).`  It's possible that the neighbourhoods bordering the Charles river are more desirable.
+- `rm : average number of rooms per dwelling.`  More bedrooms, higher price.  Makes total sense.
+- `age : proportion of owner-occupied units built prior to 1940.`  So-called "pre-war" buildings on the East coast tend to fetch higher prices.  The coefficient is not statistically significant (perhaps due to collinearity with other variables).
+- `rad : index of accessibility to radial highways.`  Highway access = easier commutes, which can make neighbourhoods more desirable/expensive.
+- `black : where Bk is the proportion of blacks by town.`  This variable is hard to interpret.  Why are we looking at `(Bk - 0.63)^2`?
+
+**Variables with negative coefficients:**
+
+- `crim : per capita crime rate by town.` Neighbourhoods with high crime tend to be less desirable
+- `nox : nitrogen oxides concentration (parts per 10 million).`  Neighbourhoods with less air pollution tend to be more expensive
+- `dis : weighted mean of distances to five Boston employment centres.`  People will pay more to live close to the main employment centres.
+- `tax : full-value property-tax rate per $10,000.`  Neighbourhoods with higher tax rates tend to have lower housing prices, all else being equal.  This also makes sense.  
+- `ptratio : pupil-teacher ratio by town`  People will pay more to send their kids to schools where there are fewer students for every teacher.  Makes sense.
+- `lstat : % of pop with low socioeconomic status`: Makes sense.  Less affluent neighbourhoods have lower home values.
+
+### 5. Non-linear transformations of the predictors
+
+##### (a) Perform a regression of `medv` onto a quadratic polynomial of `lstat` by using the formula `medv ~ lstat + I(lstat^2)`.  Use the `summary()` function to display the estimated coefficients.  Is the coefficient of the squared term statistically significant?
+
+```{r}
+summary(lm(medv ~ lstat + I(lstat^2), data = Boston))
+```
+
+- Yes, the coefficient of `I(lstat^2)` is highly statistically significant.
+
+##### (b) Try using the formula `medv ~ lstat + lstat^2` instead.  What happens?
+
+```{r}
+summary(lm(medv ~ lstat + lstat^2, data = Boston))
+```
+
+- This just fits the same model as `medv ~ lstat`.  The `I()` function is **important**
+
+##### (c) Use the formula `medv ~ poly(lstat, 2)`.  Compare your results to part (a).  
+
+```{r}
+summary(lm(medv ~ poly(lstat, 2), data = Boston))
+```
+
+- These coefficients don't look like the ones from part (a).  This is because, while they are fitting the same model (you can check that the R-squared, F-statistic, DF, etc. are all the same), the `poly(lstat, 2)` function uses an **orthonormalized** representation of the data.  To get exactly the model from part (a), we can specify `raw = TRUE`
+
+```{r}
+summary(lm(medv ~ poly(lstat, 2, raw = TRUE), data = Boston))
+```
+
+### 6. ggplot visualizations
+
+> ggplot's `stat_smooth` command allows us to visualize simple regression models  in a really easy way.  This set of problems helps you get accustomed to specifying polynomial and step function formulas for the purpose of visualization.
+
+> For this problem, please refer to the code posted here:  [Week 1 R code](http://www.andrew.cmu.edu/user/achoulde/95791/lectures/code/week1.html#polynomial-regression-and-step-functions)
+
+##### (a) Use `ggplot` graphics to construct a scatterplot of `medv` vs `lstat`, overlaying a 2nd degree polynomial.  Does this appear to be a good model of the data?  Construct plots with higher degree polynomial fits.  Do any of them appear to describe the data particularly well?
+
+```{r}
+qplot(data = Boston, x = lstat, y = medv,
+      xlab = "% of individuals of low socioeconomic status", 
+      ylab = "Median home value ($1000's)") + 
+  stat_smooth(method = "lm", formula = y ~ poly(x, 2)) +
+  ggtitle("medv ~ poly(lstat, 2)")
+```
+
+- The quadratic model fits the data OK.  It has poor behavior for `lstat` above 25%:  The data does not indicate that home values increase as poverty increases.  
+
+- Here's a 4th degree polynomial, which seems to do a better job of fitting hte data in the <30% `lstat` range.  The behavior out at `lstat` > 30% is still questionable.
+
+```{r}
+qplot(data = Boston, x = lstat, y = medv,
+      xlab = "% of individuals of low socioeconomic status", 
+      ylab = "Median home value ($1000's)") + 
+  stat_smooth(method = "lm", formula = y ~ poly(x, 4)) +
+  ggtitle("medv ~ poly(lstat, 4)")
+```
+
+##### (b) Repeat part (a), but this time using step functions instead of polynomials. Try picking cuts to best match the trends in the data. Which functional form appears to do a better job of describing the data: polynomials, or step functions?  Explain.  
+
+- Here's one reasonable choice.
+
+```{r}
+qplot(data = Boston, x = lstat, y = medv,
+      xlab = "% of individuals of low socioeconomic status", 
+      ylab = "Median home value ($1000's)") + 
+  stat_smooth(method = "lm", 
+              formula = y ~ cut(x, breaks = c(-Inf, 5, 10, 15, 20, Inf))) +
+  ggtitle("Step functions")
+```
+
+- The polynomial fit seems to do a better job of capturing the trends in the data.  Step functions work well if there are *abrupt changes* in the behavior of $Y$ as $x$ varies.  We don't really expect this in the given data.
+
+##### (c) Repeat part (a), this time using `ptratio` as the x-axis variable, and `medv` still as the y-axis variable.
+
+```{r}
+qplot(data = Boston, x = ptratio, y = medv,
+      xlab = "pupil : teacher ratio", 
+      ylab = "Median home value ($1000's)") + 
+  stat_smooth(method = "lm", formula = y ~ poly(x, 2)) +
+  ggtitle("medv ~ poly(ptratio, 2)")
+```
+
+- It looks like we don't really need the quadratic part.  Here's the linear model fit.
+
+```{r}
+qplot(data = Boston, x = ptratio, y = medv,
+      xlab = "pupil : teacher ratio", 
+      ylab = "Median home value ($1000's)") + 
+  stat_smooth(method = "lm", formula = y ~ poly(x, 1)) +
+  ggtitle("Linear model: medv ~ ptratio")
+```
+
+- Looks decent.
+
+##### (d) Repeat part (b), this time with `ptratio` instead of `lstat`.  
+
+- Since a linear model looks more-or-less appropriate, it's going to take a lot of breaks in order to replicate this model with step functions.  Here's one attempt.  It's really not worth the added complexity.  
+
+```{r}
+qplot(data = Boston, x = ptratio, y = medv,
+      xlab = "pupil : teacher ratio", 
+      ylab = "Median home value ($1000's)") + 
+  stat_smooth(method = "lm", 
+              formula = y ~ cut(x, breaks = c(-Inf, 13.5, 15.5, 18.5, 20, Inf))) +
+  ggtitle("Step functions")
+```

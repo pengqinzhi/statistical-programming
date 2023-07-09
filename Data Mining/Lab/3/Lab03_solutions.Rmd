@@ -1,0 +1,276 @@
+---
+title: "Lab 3"
+author: "Your Name Here"
+date: "February 2, 2018"
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    theme: cerulean
+    highlight: tango
+---
+
+```{r package_load}
+library(ggplot2) # graphics library
+library(ISLR)    # contains code and data from the textbook
+library(knitr)   # contains kable() function
+library(leaps)   # for regsubsets() function
+library(boot)    # for cv.glm
+library(gam)
+library(glmnet)
+options(scipen = 4)  # Suppresses scientific notation
+```
+
+### 1. Changing the author field and file name.
+
+##### (a) Change the `author:` field on the Rmd document from Your Name Here to your own name.
+
+##### (b) Rename this file to "lab03_YourHameHere.Rmd", where YourNameHere is changed to your own name.
+
+<hr>
+
+
+
+
+
+### 2. Best Subset Selection
+
+> This portion of the lab gets you to carry out the Lab in &sect;6.5.1 of ISLR (Pages 244 - 247).  You will want to have the textbook Lab open in front you as you go through these exercises.  The ISLR Lab provides much more context and explanation for what you're doing.  
+
+> You will need the `Hitters` data set from the `ISLR` library in order to complete this exercise.
+
+> Please run all of the code indicated in &sect;6.5.1 of ISLR, even if I don't explicitly ask you to do so in this document.
+
+#####  Run the `View()` command on the `Hitters` data to see what the data set looks like.
+
+```{r}
+#View(Hitters)
+```
+
+##### (a) Use `qplot` to construct a histogram of  of the `Salary` variable.  Does `Salary` appear to be normally distributed, or is the distribution skewed?  What units is `Salary` recorded in? 
+
+```{r}
+qplot(data = Hitters, x = Salary) + theme_bw()
+```
+
+- `Salary` denotes a player's 1987 annual salary as recorded on the opening day of the season.  This variable is measured in thousands of dollars.  i.e., `Salary = 1500` corrsponds to a salary of $1.5million.
+
+##### (b) Below is a modified `panel.cor` function that properly handles missing values.  Use the `pairs` command to construct a pairs plot for the Hitters data, displaying correlations in the lower panel and plots in the upper panel.  Your pairs plot should include the variables: `Salary`, `AtBat`, `Hits`, `HmRun`, `CRBI`, `RBI`, `Errors`.  Read the `?Hitters` documentation to understand what these variables mean.
+
+```{r, fig.height = 8, fig.width = 8}
+panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- abs(cor(x, y, use = "complete.obs"))
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+
+pairs(Hitters[, c("Salary", "AtBat", "Hits", "HmRun", "CRBI", "RBI", "Errors")],
+      lower.panel = panel.cor)
+```
+
+##### (c) Looking at the results from part (b), do you detect any highly correlated predictors?  Based on the definitions of the variables, can you come up with an explanation for why the variables you identified wind up being highly correlated?  How might highly-correlated predictors make model selection difficult?
+
+```{r}
+# Edit me
+```
+
+- **Your answer here**
+
+##### (d) Follow the ISL example of using removing `NA` values using the `na.omit()` command. Then, use the `regsubsets` command to perform best subset selection.  Your should go up to models of size `15`.  
+
+```{r}
+Hitters <- na.omit(Hitters)
+regfit.full <- regsubsets(Salary ~ ., Hitters, nvmax = 15)
+summary(regfit.full)
+reg.summary <- summary(regfit.full)
+```
+
+##### What is the best 4-variable model according to the best subset search?
+
+- **Your answer here**
+
+##### (e) Construct plots of $R^2$, RSS, AIC and BIC for the sequence of models you obtained in the previous problem.  Use the points() approach outlines in the text to also indicate the criterion minimizing models for each of the curves.
+
+```{r}
+par(mfrow=c(2,2))
+plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
+plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
+which.max(reg.summary$adjr2)
+points(11,reg.summary$adjr2[11], col="red",cex=2,pch=20)
+plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
+which.min(reg.summary$cp)
+points(10,reg.summary$cp[10],col="red",cex=2,pch=20)
+which.min(reg.summary$bic)
+plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
+points(6,reg.summary$bic[6],col="red",cex=2,pch=20)
+```
+
+
+##### (f)  Explain what the plots resulting from the commands below are showing.
+
+```{r, fig.height = 8, fig.width = 8}
+plot(regfit.full,scale="r2")
+plot(regfit.full,scale="adjr2")
+plot(regfit.full,scale="Cp")
+plot(regfit.full,scale="bic")
+```
+
+##### (g) Which variables are selected in the BIC-optimal model?  What are the values of their coefficients?
+
+```{r}
+coef(regfit.full,6)
+```
+
+
+
+## 3. Forward and Backward Stepwise Selection
+
+> The next portion of the lab gets you to carry out the Lab in &sect;6.5.2 of ISLR (Page 247).  You will want to have the textbook Lab open in front you as you go through these exercises.  The ISLR Lab provides much more context and explanation for what you're doing.  
+
+##### (a) Apply Forward and Backward stepwise selection to the `Hitters` data.
+
+```{r}
+regfit.fwd=regsubsets(Salary~.,data=Hitters,nvmax=19,method="forward")
+summary(regfit.fwd)
+regfit.bwd=regsubsets(Salary~.,data=Hitters,nvmax=19,method="backward")
+summary(regfit.bwd)
+```
+
+##### (b) Compare the best 3-variable model identified by best subset, forward, and backward selection.  Are they the same or different?
+
+```{r}
+coef(regfit.full,3)
+coef(regfit.fwd,3)
+coef(regfit.bwd,3)
+```
+
+##### (c) Compare the models selected by BIC using best subset, forward, and backward selection.  Are these models the same or different?
+
+```{r}
+# Edit me
+```
+
+##  4. Choosing Among Models using the Validation Set Approach and Cross-Validation
+
+> The next portion of the lab gets you to carry out the Lab in &sect;6.5.3 of ISLR (Page 248 - 250).  You will want to have the textbook Lab open in front you as you go through these exercises.  The ISLR Lab provides much more context and explanation for what you're doing. 
+
+##### All of the code needed to carry out this component of the lab is provided for you below.  As you're going through the textbook explanation and running the code, answer the following conceptual questions:
+
+> When we use the Validation Set Approach or Cross-Validation, do we first run best subset/forward/backward selection to get a sequence of models, or do we perform these steps on the *training set* of each validation method?
+
+   - It is **critical** that the selection procedure be conducted **inside** the cross-validation routine.  If you first get a sequence of models through, say, Forward Stepwise (using the full data) and then you apply Cross-Validation to estimate the test error of each model, your estimates will be overly optimistic. 
+   -As a general rule, *any part of your model fitting that ever uses the outcome variable Y* needs to be put **inside** the cross-validation loop in order to get accurate test error estimates.
+
+> True or False: (In the validation set approach...)  In the end, the variables we wind up using in our final model (the one fit to the full data) will be the same as those selected on the training set.
+
+   - FALSE.  The validation set approach allows us to pick a model size.  The final model is obtained by running, say, Forward Stepwise Selection on the full data, and choosing the model of the size selected by the Validation set approach.  E.g., your Validation set approach may tell you that the 10 predictor model has the lowest estimated test error.  But the best 10  variable model on your full data may differ from the best 10 variable model from your Training split.  
+
+> True or False:  When we use Cross-Validation with Best subset/Forward/Backward selection, we need to apply the variable selection method *on each set of training data*.
+
+   - TRUE.  This is a rephrasing of the first question.  
+
+```{r, eval = FALSE}
+# You'll need to set eval = TRUE in the code chunk header
+# in order for this code to run
+set.seed(1)
+train=sample(c(TRUE,FALSE), nrow(Hitters),rep=TRUE)
+test=(!train)
+regfit.best=regsubsets(Salary~.,data=Hitters[train,],nvmax=19)
+test.mat=model.matrix(Salary~.,data=Hitters[test,])
+val.errors=rep(NA,19)
+for(i in 1:19){
+   coefi=coef(regfit.best,id=i)
+   pred=test.mat[,names(coefi)]%*%coefi
+   val.errors[i]=mean((Hitters$Salary[test]-pred)^2)
+}
+val.errors
+which.min(val.errors)
+coef(regfit.best,10)
+predict.regsubsets=function(object,newdata,id,...){
+  form=as.formula(object$call[[2]])
+  mat=model.matrix(form,newdata)
+  coefi=coef(object,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi
+  }
+regfit.best=regsubsets(Salary~.,data=Hitters,nvmax=19)
+coef(regfit.best,10)
+k=10
+set.seed(1)
+folds=sample(1:k,nrow(Hitters),replace=TRUE)
+cv.errors=matrix(NA,k,19, dimnames=list(NULL, paste(1:19)))
+for(j in 1:k){
+  best.fit=regsubsets(Salary~.,data=Hitters[folds!=j,],nvmax=19)
+  for(i in 1:19){
+    pred=predict(best.fit,Hitters[folds==j,],id=i)
+    cv.errors[j,i]=mean( (Hitters$Salary[folds==j]-pred)^2)
+    }
+  }
+mean.cv.errors=apply(cv.errors,2,mean)
+mean.cv.errors
+par(mfrow=c(1,1))
+plot(mean.cv.errors,type='b')
+reg.best=regsubsets(Salary~.,data=Hitters, nvmax=19)
+coef(reg.best,11)
+```
+
+## 5. The Lasso
+
+> The next portion of the lab gets you to carry out the Lab in &sect;6.6.2 of ISLR (Page 255).  You will want to have the textbook Lab open in front you as you go through these exercises.  The ISLR Lab provides much more context and explanation for what you're doing. 
+
+```{r}
+# Define x matrix and y vector for use with glmnet
+x <- model.matrix(Salary~.,Hitters)[,-1]
+y <- Hitters$Salary
+
+# Split data into test and train
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x)/2)
+test <- (-train)
+y.test <- y[test]
+
+# Predefined grid of lambda values:
+grid=10^seq(10,-2, length =100)
+```
+
+##### (a) Use the `glmnet` command to fit a lasso model to the `train` subset of the `Hitters` data.  You'll want to specify `lambda=grid` to use the predefined sequence of $lambda$ values constructed above.  Use the `plot` command to produce a regularization plot of your model fit.
+
+```{r}
+lasso.mod=glmnet(x[train,],y[train],alpha=1,lambda=grid)
+plot(lasso.mod)
+```
+
+##### (b)  Apply cross-validation on the training data using `cv.glmnet`.  Use the `plot` command to construct a CV error curve.
+
+```{r}
+set.seed(1)
+cv.out=cv.glmnet(x[train,],y[train],alpha=1)
+plot(cv.out)
+```
+
+##### (c)  What value of $lambda$ minimizes the CV error?  What is the *test set prediction error* for the model at this choice of lambda?  Is this error similar to the CV error?
+
+```{r}
+bestlam=cv.out$lambda.min
+lasso.pred=predict(lasso.mod,s=bestlam,newx=x[test,])
+mean((lasso.pred-y.test)^2)
+```
+
+##### (d)  What is the 1-SE rule choice of $\lambda$?  What is the *test set prediction error* for the model at this choice of lambda?  Is this error similar to the CV error? 
+
+```{r}
+# Edit me
+```
+
+##### (e) How many non-zero coefficients are there in the $\lambda$-min model?  How about the 1-SE model?  
+
+```{r}
+out=glmnet(x,y,alpha=1,lambda=grid)
+lasso.coef=predict(out,type="coefficients",s=bestlam)[1:20,]
+lasso.coef
+lasso.coef[lasso.coef!=0]
+```
