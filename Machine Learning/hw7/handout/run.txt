@@ -1,0 +1,7 @@
+python learnhmm.py fr_data/train.txt fr_data/index_to_word.txt fr_data/index_to_tag.txt fr_output/fr_hmminit.txt fr_output/fr_hmmemit.txt fr_output/fr_hmmtrains.txt
+python learnhmm.py  toy_data/train.txt toy_data/index_to_word.txt toy_data/index_to_tag.txt toy_output/toy_hmminit.txt toy_output/toy_hmmemit.txt toy_output/toy_hmmtrans.txt
+python learnhmm.py  en_data/train.txt en_data/index_to_word.txt en_data/index_to_tag.txt en_output/en_hmminit.txt en_output/en_hmmemit.txt en_output/en_hmmtrans.txt
+
+
+python forwardbackward.py toy_data/validation.txt toy_data/index_to_word.txt toy_data/index_to_tag.txt toy_output/toy_hmminit.txt toy_output/toy_hmmemit.txt toy_output/toy_hmmtrans.txt toy_output/toy_predicted.txt toy_output/toy_metrics.txt
+python forwardbackward.py en_data/validation.txt en_data/index_to_word.txt en_data/index_to_tag.txt en_output/en_hmminit.txt en_output/en_hmmemit.txt en_output/en_hmmtrans.txt en_output/en_predicted.txt en_output/en_metrics.txt
