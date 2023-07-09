@@ -1,0 +1,3 @@
+python q_learning.py tile fixed_weight.out fixed_returns.out 25 200 0.0 0.99 0.005
+
+python q_learning.py raw weight.out returns.out 4 200 0.05 0.99 0.01
