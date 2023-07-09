@@ -1,0 +1,3 @@
+a=['a','b','c']';
+[s,v] = listdlg('PromptString','Select a string:',...
+'SelectionMode','single','ListString',a)

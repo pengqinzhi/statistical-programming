@@ -1,0 +1,18 @@
+x=[0:pi/20:2*pi];
+y1=sin(x);y2=cos(x);y3=sin(2*x);
+figure(1);
+plot(x,y1,'k--*',x,y2,'r-s',x,y3,'b:o');
+legend('y1=sin(x)','y2=cos(x)','y3=sin(2x)');
+clear;
+x=-8:0.5:8; y=-8:0.5:8;
+[X,Y]=meshgrid(x,y);
+r=sqrt(X.^2+Y.^2)+eps;
+Z=sin(r)./r;
+figure(2);
+mesh(X,Y,Z);
+clear;
+v=[0:pi/20:2*pi];u=[-pi/2:pi/20:pi/2];
+[V,U]=meshgrid(v,u);
+X=4*sin(V).*cos(U);Y=4*sin(V).*sin(U);Z=4*cos(V);
+figure(3);
+surf(X,Y,Z);
