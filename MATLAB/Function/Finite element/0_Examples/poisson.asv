@@ -1,0 +1,69 @@
+function [Err_0,Err_1]=poisson(a,N)
+
+% solve the poisson equation $-\partial_x(\alpha\partial_xu)=f$
+% INPUT: the number of elements of the 1D uniform mesh
+%--------------------------------------------------------------------------
+
+%==========================================================================
+%  SOLVE THE PROBLEM
+%==========================================================================
+%-----Define the mesh in [0, 1]--------------------------------------------
+mesh=Initmesh1D(N,0,1,[1;N+1],[]);
+%-----Define the quadrature scheme-----------------------------------------
+coord = quadrature_Line(4);
+%------Select a type of basis funtion--------------------------------------
+Base = Lagrange_Basis(2);
+%------Assemble the stiffmatrix--------------------------------------------
+A = stiff_matrix1D(Base,Base,coord,mesh,@coeff,1,1)+...
+    stiff_matrix1D(Base,Base,coord,mesh,@coeff_Convection,0,0);
+    
+%--------Assemble the right hand side--------------------------------------
+b_right = RHS_vector1D(Base,coord,mesh,@RHS);
+%---------Treat the boundary condition-------------------------------------
+[A,b_right] = Poission_BoundaryTreatment(mesh,Base,A,b_right,@u_D);
+%----Solve the linear system-----------------------------------------------
+mesh.solu = A\b_right;
+%mesh.solu = zeros(size(A,1),1);
+%[mesh.solu,error,iter,flag] = cg(A,mesh.solu,b_right,10000,1e-6);
+%-----Do the error estimate for the finite element solution----------------
+Err_0 = Error_Estimate(mesh,Base,coord,mesh.solu,@ExactU,0);
+Err_1 = Error_Estimate(mesh,Base,coord,mesh.solu,@GradExactU,1);
+%Err_0=1;
+%------Output the solution-------------------------------------------------
+showFunct1D(mesh)
+
+
+%==========================================================================
+%== Problem definition ===========
+%==========================================================================
+%-------the coefficient function-------------------------------------------
+function v=coeff(x)
+%epsilon = 1e-10;
+v=ones(size(x,1),1);
+%-------the coefficient function-------------------------------------------
+function v=coeff_Convection(x)
+v = ones(size(x,1),1);
+%--------Exact funtion ----------------------------------------------------
+function v = ExactU(x)
+%------ Exampel 1--------------------------------------
+%v = sin(pi*x);
+%------ Example 2------------------------------------
+v = sin(2*pi*x);
+function v = GradExactU(x)
+%------ Exampel 1--------------------------------------
+v = 2*pi*cos(2*pi*x);
+%------ Exampel 2--------------------------------------
+%--------the right hand side function--------------------------------------
+function v=RHS(x)
+%------u=x(1-x)------------------------------------------------------------
+v = (4*pi*pi+1)*sin(2*pi*x);
+%------ Exampel 2--------------------------------------
+%v = 2;
+%----------Example 3--------
+%v = ones(size(x,1),1);
+%-----------the Dirichlet condition----------------------------------------
+function v=u_D(x)
+v = zeros(size(x,1),1);
+%------------the Neumann condition-----------------------------------------
+function v=u_N(x)
+v = zeros(size(x,1),1);

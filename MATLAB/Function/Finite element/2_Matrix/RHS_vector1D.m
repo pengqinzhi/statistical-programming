@@ -1,0 +1,39 @@
+function b_right = RHS_vector1D(Base,coord,mesh,f_rhs)
+
+
+%--------get the element matrix size---------------------------------------
+m=size(Base.b(0),2);
+space_dim=size(f_rhs(mesh.node(1,:)),2);
+
+
+Nr_int=size(coord,1);
+
+%--------compute the base value at the integral points---------------------
+
+%Nr_node=size(mesh.node,1);
+%Nr_edge=size(mesh.node4edge,1);
+Nr_elem=size(mesh.elem,1);
+
+%--------------------------------------------------------------------------
+% Compute the area of each element
+%--------------------------------------------------------------------------
+area = abs(mesh.node(mesh.elem(:,1))-mesh.node(mesh.elem(:,2)))/2;
+%----------compute the freedom degree vector-------------------------------
+[Free_deg,Dim] = DOF_Mangement1D(mesh,Base);
+             
+                 
+b_right = zeros(Dim,space_dim);
+%-------------produce the stiffness matrix---------------------------------
+for kk=1:Nr_int    
+    %--------compute the base value at the integral points-----------------
+    B_1=Base.b(coord(kk,1));           
+    %----------Compute the coefficient matrix at the integral point--------
+    coeff_vector=f_rhs((1-coord(kk,1))/2*mesh.node(mesh.elem(:,1))+...
+                       (1+coord(kk,1))/2*mesh.node(mesh.elem(:,2)));
+    
+    for i=1:m
+        b_right = b_right + coord(kk,2)*sparse(kron(ones(space_dim,1),Free_deg(:,i)),...
+                      kron([1:space_dim]',ones(Nr_elem,1)),...
+                   B_1(i)*kron([1:space_dim]',area).*coeff_vector(:),Dim,space_dim);                    
+    end    
+end
