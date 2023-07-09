@@ -1,0 +1,9 @@
+python neuralnet.py tinyTrain.csv tinyValidation.csv tinyTrain_out.labels tinyValidation_out.labels tinyMetrics_out.txt 1 4 2 0.1
+
+python neuralnet.py smallTrain.csv smallValidation.csv smallTrain_out.labels smallValidation_out.labels smallMetrics_out.txt 2 4 2 0.1
+
+python neuralnet.py smallTrain.csv smallValidation.csv smallTrain_out.labels smallValidation_out.labels smallMetrics_out.txt  --num_epoch 100 --hidden_units 20 --init_flag 1 --learning_rate 0.1
+
+python plot.py smallTrain.csv smallValidation.csv 
+
+python neuralnet.py smallTrain.csv smallValidation.csv smallTrain_out.labels smallValidation_out.labels smallMetrics_out.txt 1 4 2 0.1
