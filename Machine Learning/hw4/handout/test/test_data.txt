@@ -1,0 +1,2 @@
+0	a hot dog is not a sandwich because it is not square
+1	a hot dog is a sandwich because it not square

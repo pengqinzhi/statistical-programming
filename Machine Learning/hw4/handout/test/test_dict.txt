@@ -1,0 +1,8 @@
+the 0
+square 1
+hot 2
+is 3
+not 4
+a 5
+happy 6
+sandwich 7
