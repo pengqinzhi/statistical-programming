@@ -1,0 +1,28 @@
+python feature.py largedata/train_data.tsv largedata/valid_data.tsv largedata/test_data.tsv dict.txt largeoutput/formatted_train.tsv largeoutput/formatted_valid.tsv largeoutput/formatted_test.tsv 1 word2vec.txt
+python feature.py smalldata/train_data.tsv smalldata/valid_data.tsv smalldata/test_data.tsv dict.txt smalloutput/formatted_train.tsv smalloutput/formatted_valid.tsv smalloutput/formatted_test.tsv 2 word2vec.txt
+
+python lr.py largeoutput/model1_formatted_train.tsv largeoutput/model1_formatted_valid.tsv largeoutput/model1_formatted_test.tsv dict.txt largeoutput/train_out.labels largeoutput/test_out.labels largeoutput/metrics_out.txt 500
+python lr.py largeoutput/model2_formatted_train.tsv largeoutput/model2_formatted_valid.tsv largeoutput/model2_formatted_test.tsv dict.txt largeoutput/train_out.labels largeoutput/test_out.labels largeoutput/metrics_out.txt 500
+python lr.py smalloutput/model2_formatted_train.tsv smalloutput/model2_formatted_valid.tsv smalloutput/model2_formatted_test.tsv dict.txt smalloutput/train_out.labels smalloutput/test_out.labels smalloutput/metrics_out.txt 500
+
+python lr_plot2.py largeoutput/model1_formatted_train.tsv largeoutput/model1_formatted_valid.tsv largeoutput/model1_formatted_test.tsv dict.txt largeoutput/train_out.labels largeoutput/test_out.labels largeoutput/metrics_out_5000.txt 5000
+python lr_plot.py largeoutput/model2_formatted_train.tsv largeoutput/model2_formatted_valid.tsv largeoutput/model2_formatted_test.tsv dict.txt largeoutput/train_out.labels largeoutput/test_out.labels largeoutput/metrics_out_5000.txt 5000
+
+
+500
+small model1:  0:00:10.762828
+small model2:  0:00:02.269070
+
+large model1: 0:00:07.691052
+large model2: 0:00:36.395982
+
+
+5000
+
+large model1: 5:34:03.819094
+error(train): 0.000000
+error(test): 0.140000
+
+large model2: 0:04:11.294287  
+error(train): 0.214167
+error(test): 0.255000
