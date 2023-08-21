@@ -1,0 +1,44 @@
+With the emergence of the Internet as a computing platform, distributed applications are being widely deployed by organizations. 
+Understanding the principles/theory and the technologies underlying distributed computing and systems design is increasingly important. 
+Examples of technologies supporting such deployment include JEE architecture and Web services.
+
+This course has three major objectives. First, it is designed to introduce students to the principles underlying distributed computing 
+and the design of distributed systems. Second, it aims to provide students with the opportunity to exercise these principles in the context 
+of real applications by having the students use technologies such as XML, SOAP, Web services, and JEE-based application servers. 
+Finally, it seeks to endow students with the capacity to analyze, design, evaluate and recommend distributed computing solutions skills 
+in response to business problems.
+
+Distributed Computing Principles
+
+Distributed computing architectures: P2P, client server
+Inter-process communication
+Distributed objects and remote invocation
+Naming and Name services
+Time and Global State Management
+Transactions and Concurrency control
+Distributed Transactions
+Material on principles of distributed systemsare taught from books such as Tannenbaum and Steen or the Coulouris et al. book on Distributed Systems.
+
+Internet-enabled Distributed Computing Technologies
+
+Application Server architectures: JEE
+Extensions of the Java Distributed Object model and the DCOM component-based architectures
+Web Services: WSDL, UDDI, SOAP, XML
+http-based RPC combined with standards for interface definition and naming.
+Discussion and application of select API’s from the API layer of the JEE architecture to illustrate distributed transactions, middleware access protocols 
+(MQ Series API), and Messaging services (JMS).
+The course employs project oriented teaching with implementation components to get students hands on skills with JEE frameworks.
+
+Learning Outcomes
+Describe the non-functional characteristics of distributed applications and differentiate between different types of middleware systems.
+Design, implement, and deploy distributed systems using the prevalent models of web applications, web services, remote objects, and asynchronous messaging.
+Understand the function and interplay of network protocols from ARP to application protocols that enable distributed systems on the Internet.
+Demonstrate the technical ability to code solutions with core networking protocols. 
+Program solutions to run on all ranges of devices, including mobile, desktop, and cloud-based servers.
+Understand the Network File System (NFS), the Andrew File System (AFS), and the Hadoop Distributed File System (HDFS)
+Understand the challenge of time in a distributed system, and implement a means of assessing a distributed system's state. 
+Understand transactions and implement a two phase commit protocol. 
+Describe the difference and similarities between symmetric key and asymmetric key cryptography.
+Describe the reasoning behind each step of several cryptographic protocols including variations on Kerberos and SSL.
+Demonstrate deploying containers to cloud infrastructure
+Understand the problem of distributed consensus and design solutions
