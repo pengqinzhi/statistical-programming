@@ -1,0 +1,81 @@
+index,cleansed_text,created_at,class,is_unuseful,pred,Notes
+787,"Hi Carlene,
+
+Thanks for reaching out!
+
+Repayment for your advance is deducted directly from your pay check.
+
+Your advance from 08/29 is scheduled to be withdrawn from your 09/13 pay.
+
+Please let us know if you have any further questions or concerns!",2019-09-10 15:06:31.000000 UTC,chat,FALSE,TRUE,
+663,"Thank you, Mhai. I will reach out to the group requesting this report to see whether they are okay with cross-referencing the roles to the User Administration User Guide or whether they would like the report hard-coded to show the services.",2021-09-23 23:56:52.000000 UTC,chat,FALSE,TRUE,
+863,"Select your desired Dispersal Wallet from the DropDown Menu & click ?€?Next?€?
+
+Confirm your Payout Details & Select 'Transfer Now':
+
+If successful, you will receive the Confirmation message below:",2018-08-25 15:50:54.000000 UTC,chat,FALSE,TRUE,too many capital letters
+546,"Hello Kailina from Divvy,
+
+Your message about ""Re: Something else"" was waitlisted.
+
+Please add yourself to my Guest List so your messages will be delivered to my Inbox. Use the link below.
+
+
+
+Thank you,
+
+
+Boxbe c/o SparkPost | Attn: Legal | 9160 Guilford Road | Columbia, MD 21046
+
+Powered by Boxbe ?€? ""End Email Overload""
+
+| 
+
+Boxbe.com ?? 2021 All Rights Reserved",2021-12-16 15:55:41.000000 UTC,chat,FALSE,TRUE,too many capital letters
+90,"Delivery has failed to these recipients or distribution lists:
+
+The recipient's e-mail address was not found in the recipient's e-mail system. Microsoft Exchange will not try to redeliver this message for you. Please check the e-mail address and try resending this message, or provide the following diagnostic text to your system administrator.
+
+
+
+Sent by Microsoft Exchange Server 2007 
+
+Diagnostic information for administrators:
+
+Generating server: ca.canon.com.au
+
+postmaster@canon.com.au
+550 5.1.1 RESOLVER.ADR.RecipNotFound; not found ##
+
+Original message headers:
+
+Received: from nsnrexff01.ca.canon.com.au (202.2.157.150) by
+ nsnrexht01.ca.canon.com.au (172.17.10.68) with Microsoft SMTP Server (TLS) id
+ 8.3.297.1; Sat, 13 Jul 2013 08:18:45 +1000
+Received: from mail6.bemta7.messagelabs.com (216.82.255.55) by
+ smtp1.canon.com.au (202.2.157.150) with Microsoft SMTP Server id 8.3.297.1;
+ Sat, 13 Jul 2013 08:07:15 +1000
+Return-Path: <support-updates@concur.com>
+Received: from [216.82.254.35:64810] by server-16.bemta-7.messagelabs.com id
+ D3/AC-14165-2C080E15; Fri, 12 Jul 2013 22:18:42 +0000
+X-Env-Sender: support-updates@concur.com
+X-Msg-Ref: server-7.tower-143.messagelabs.com!1373667521!4116515!1
+X-Originating-IP: [204.14.232.70]
+X-SpamWhitelisted: IP whitelist
+X-StarScan-Received:
+X-StarScan-Version: 6.9.9; banners=-,-,X-VirusChecked: Checked
+Received: (qmail 28810 invoked from network); 12 Jul 2013 22:18:42 -0000
+Received: from smtp07-asg.mta.salesforce.com (HELO
+ smtp07-asg.mta.salesforce.com) (204.14.232.70)  by
+ server-7.tower-143.messagelabs.com with EDH-RSA-DES-CBC3-SHA encrypted SMTP;
+ 12 Jul 2013 22:18:42 -0000
+X-SFDC-Interface: internal
+Received: from [10.237.9.130] ([10.237.9.130:37847]
+ helo=ops-mta2-1-was.ops.sfdc.net)	by mx3-asg.mta.salesforce.com
+ (envelope-from <support-updates@concur.com>)	(ecelerity 2.2.2.45 r()) with
+ ESMTP	id E6/14-28669-1C080E15; Fri, 12 Jul 2013 22:18:41 +0000
+Received: from [10.237.66.67] ([10.237.66.67:36502]
+ helo=na4-app1-10-was.ops.sfdc.net)	by mx2-was.mta.salesforce.com
+ (envelope-from <support-updates@concur.com>)	(ecelerity 2.2.2.45 r()) with
+ ESMTP	id A6/B6-26196-1C080E15; Fri, 12 Jul 2013 22:18:41 +0000
+Date: Fri, 12 Jul 2013 22:18:41 +0000",2013-07-12 22:19:00.000000 UTC,chat,FALSE,TRUE,too lengthy; too many email addresses; too many capital letters
